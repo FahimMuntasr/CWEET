@@ -116,8 +116,8 @@ void signUp(){
 
     fNameList = fopen(nameList, "a");//open the name list text file in the append mode to add a new username at the end
     fMailList = fopen(mailList, "a");
-    fprintf(fNameList, userName);//add username to name list
-    fprintf(fMailList, userEmail);// add email to mail list
+    fprintf(fNameList, "\n%s", userName);//add username to name list
+    fprintf(fMailList, "\n%s", userEmail);// add email to mail list
     fclose(fNameList);
     fclose(fMailList);
     //good practice to close files after using them to free up memory
@@ -125,7 +125,7 @@ void signUp(){
     sprintf(filepath, "data/UserInfo/%s.txt", userName);// this function writes a filepath to a text file that will now be created, the name of the text file is same as the username
     fUserInfo = fopen(filepath, "a"); // Open file in append mode
     if (fUserInfo != NULL) { // Check if file opened successfully
-        fprintf(fUserInfo, "%s\n%s\n%s\n", userName, userEmail, password); // Write info followed by newline
+        fprintf(fUserInfo, "%s\n%s\n%s", userName, userEmail, password); // Write info followed by newline
         fclose(fUserInfo); // Close the file
     } else {
         printf("Error opening file.\n"); // Notify if there's an error opening the file
@@ -139,43 +139,23 @@ void takePass(){
     takeHiddenInput(password);
     //scanf("%31s", password);
     for(i=0;password[i]!='\0';i++){
-        if(isElementOf(password[i],lowerCase)){
+        if(isElementOf(password[i],lowerCase))
             lower = 1;
-        }
-        if(isElementOf(password[i],upperCase)){
+        if(isElementOf(password[i],upperCase))
             upper = 1;
-        }
-        if(isElementOf(password[i],numbers)){
+        if(isElementOf(password[i],numbers))
             number = 1;
-        }
-        if(isElementOf(password[i],specialChars)){
+        if(isElementOf(password[i],specialChars))
             special = 1;
-        }
     }
-    if(i<12){
-        showError("Password must be more than 12 characters");
-        takePass();
-        return;
-    }else if(lower == 0){
-        showError("Password must contain atleast one lower case character");
-        takePass();
-        return;
-    }else if(upper == 0){
-        showError("Password must conatin atleast one upper case character");
-        takePass();
-        return;
-    }else if(number == 0){
-        showError("Password must contain atleast one number");
-        takePass();
-        return;
-    }else if(special == 0){
-        showError("Password must contain atleast one special character");
+    if((i<12)||(lower == 0)||(upper == 0)||(number == 0)||(special == 0)){
+        showError("Password must have more than 12 characters, lowercase, uppercase, numbers and special characters");
         takePass();
         return;
     }
     printf("\nEnter password again: ");
     takeHiddenInput(tempPass);
-    printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, tempPass, matchString(password, tempPass));
+    //printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, tempPass, matchString(password, tempPass));
     if(!matchString(password, tempPass)){
         showError("Passwords do not match");
         takePass();
@@ -183,11 +163,59 @@ void takePass(){
     }
 }
 void signIn(){
+    system("cls");//clear screen
+
+    int i, userFound = 0;// userFound variable will be used as a flag later on
+    char buffer[32], filePath[100];
+    printf("Enter username: ");
+    scanf("%31s", userName);//limit to 31 characters
+    fNameList = fopen(nameList, "r");
+    if(fNameList==NULL){
+        showError("Could not fetch name list");
+        return;
+    }else{
+        while(fgets(buffer, 32, fNameList)!=NULL){
+            if(matchString(userName, buffer)){
+                userFound = 1;
+                break;
+            }
+        }
+    }
+    fclose(fNameList);
+    if(!userFound){
+        showError("User does not exist");
+        signIn();
+        return;
+    }else{
+        printf("Enter password: ");
+        takeHiddenInput(password);
+        sprintf(filePath, "data/UserInfo/%s.txt", userName);
+        fUserInfo = fopen(filePath, "r");
+
+        i=0;
+        while(fgets(buffer, 32, fUserInfo)!=NULL){
+            //printf("Line %d, buffer: %s\n", i, buffer);
+            if(i==2){
+                if(matchString(buffer, password)){
+                    printf("\nWelcome %s\n", userName);
+                    break;
+                }else{
+                    showError("Incorrect Password");
+                    //printf("\nIncorrect Password\nPass: %s\nInput: %s\n", buffer, password);
+                    break;
+                }
+            }
+            i++;
+        }
+        fclose(fUserInfo);
+    }
 
 }
 int matchString(char ref[], char input[]){
+    //printf("INPUT: %s\nRef: %s", input, ref);
     int i, flag=1;//Assume strings are equal at first
     for(i=0;ref[i]!='\0';i++){
+        //printf("\n%d: %c (ref) %c (input) %d\n", i, ref[i], input[i], ref[i] == input[i]);
         if(ref[i] != input[i]){
             flag = 0;
             break;
