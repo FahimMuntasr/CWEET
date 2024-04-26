@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <conio.h>
 
 //fNameList will contain all the usernames and fMailList will contain all email adresses.
 FILE *fNameList, *fMailList, *fUserInfo;
@@ -12,11 +13,13 @@ char upperCase[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char numbers[] = "1234567890";
 char specialChars[] = "!@#$%^&*()-_+={}[]|\`~<>,.?/:;";
 
-char userName[32], userEmail[32], password[32];
+char userName[32], userEmail[32], password[32], tempPass[32];
 
 void signUp();
 void takePass();
 void signIn();
+
+void takeHiddenInput(char[]);// takes the input array as an argument
 
 int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
 int matchString(char[], char[]);//Returns 1 if two strings are same
@@ -130,11 +133,11 @@ void signUp(){
 }
 void takePass(){
     system("cls");//clear screen
-    char tempPass[32];
     int i;
     int upper = 0, lower = 0, number = 0, special = 0;// these 4 variables will be used as flags to validate the password later on
     printf("Enter password: ");//must be more than 12 chars long and less than 33 chars and must contain lowercase,uppercase,numbers and a special symbol
-    scanf("%31s", password);
+    takeHiddenInput(password);
+    //scanf("%31s", password);
     for(i=0;password[i]!='\0';i++){
         if(isElementOf(password[i],lowerCase)){
             lower = 1;
@@ -170,8 +173,9 @@ void takePass(){
         takePass();
         return;
     }
-    printf("Enter password again: ");
-    scanf("%31s", tempPass);
+    printf("\nEnter password again: ");
+    takeHiddenInput(tempPass);
+    printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, tempPass, matchString(password, tempPass));
     if(!matchString(password, tempPass)){
         showError("Passwords do not match");
         takePass();
@@ -200,4 +204,23 @@ int isElementOf(char key, char arr[]){
         }
     }
     return flag;//Returns 1 if key is an element of the array and 0 if not
+}
+void takeHiddenInput(char arr[]){
+    int i = 0;
+    char ch;
+    while(1){
+        ch = getch();
+        if(ch == '\r')// check if ENTER is pressed
+            break;
+        else if(ch == '\b' && i > 0){//check if BACKSPACE is pressed
+            printf("\b \b");//Move cursor back, print space, move cursor back
+            i--;
+        }else if(i<31){
+            printf("*");//Print asterisk
+            arr[i] = ch;
+            i++;
+        }
+    }
+    password[i] = '\0';
+    //printf("%s", password);
 }
