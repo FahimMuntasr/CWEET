@@ -1,11 +1,17 @@
 #include <stdio.h>
 #include <conio.h>
+#include <stdlib.h>
+#include <string.h>
 
-//fNameList will contain all the usernames and fMailList will contain all email adresses.
-FILE *fNameList, *fMailList, *fUserInfo;
-//Theses arrays hold the location of their respective files
-char nameList[] = "data/UserList/usr.txt";
-char mailList[] = "data/UserList/email.txt";
+
+int isAuthenticated = 0;
+
+// fData: Contains all the users along with their posts
+
+FILE *fData;
+
+//Theses arrays hold the location of the data file
+char data[] = "./data/data.txt";
 
 char validChars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!_1234567890";//array of valid characters, will be used later for username validation
 char lowerCase[] = "abcdefghijklmnopqrstuvwxyz";
@@ -13,23 +19,71 @@ char upperCase[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char numbers[] = "1234567890";
 char specialChars[] = "!@#$%^&*()-_+={}[]|\`~<>,.?/:;";
 
-char userName[32], userEmail[32], password[32], tempPass[32];
+//! TODO: USE STRUCTS!
+char username[32], email[32], password[32], confirmPassword[32], hashedPassword[32];
+
+
+void authenticate();
 
 void signUp();
-void takePass();
 void signIn();
 
+void takePass();
+void hash_password(const char str[], char hashed_pass[]);
 void takeHiddenInput(char[]);// takes the input array as an argument
 
+unsigned int hashingFunction(char[]); // hashes the password
 int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
 int matchString(char[], char[]);//Returns 1 if two strings are same
 
+
+
+
 void showError(char[]);//Takes the error reason as an argument and prints it on the screen
+void menu();
 
 int main(){
     system("cls");
-    /*this commands clears the screen, this means that when the main function is recursively
-    called later on inside the if statement the screen will refresh*/
+
+    if(isAuthenticated){
+
+        menu();
+
+    }else {
+
+        authenticate();
+
+    }
+
+    return 0;
+}
+
+
+
+void menu(){
+    system("cls");
+
+    char input;
+    printf("[P]rofile\n[E]xlore Page\n[Q]uit\n");
+    scanf(" %c", &input);
+    if(input == 'P'|| input == 'p'){
+        return;
+    }else if(input == 'q'||input == 'Q'){
+        exit(0); // Exit the program
+    }else if(input == 'C'|| input == 'c'){
+        return;
+    }else{
+
+        showError("Invalid Input");
+        main();
+    }
+
+
+}
+
+
+void authenticate(){
+    system("cls");
 
     char input;
     printf("[L]og In\n[C]reate Account\n[E]xit\n");
@@ -44,98 +98,128 @@ int main(){
         showError("Invalid Input");
         main();//recursively call the main function until the user inputs a valid character
     }
-    return 0;
+
+
 }
+
 void showError(char error[]){
-    printf("%s\n", error);
+    printf("\n%s\n", error);
     system("pause");//this command pauses the program until user presses any key
 }
 void signUp(){
-    system("cls");//clear screen
+    system("cls");
+    char extractedUsername[50], extractedEmail[50];
     int i;
+
     char buffer[32], filepath[100];
     printf("Username: ");
-    scanf("%31s", userName);// limit input size to 64 chars
+    scanf("%31s", username);// limit input size to 64 chars
     printf("Email: ");
-    scanf("%31s", userEmail);
+    scanf("%31s", email);
+
     //printf("%s\n%s\n", userName, userEmail);
     //Check for invalid characters
-    for(i=0;userName[i]!='\0';i++){
-        if(!isElementOf(userName[i], validChars)){
+    for(i=0;username[i]!='\0';i++){
+        if(!isElementOf(username[i], validChars)){
             //if the function isElementOf() returns 0 it means that the character is not a valid character
+
             showError("Username contains invalid characters");
-            signUp();//recursively call back the function again
+
+            //recursively call back the function again
+            signUp();
             return;
         }
     }
+
     //check if username already exists
-    fNameList = fopen(nameList, "r");
-    // opens the text file containing all usernames in the read ("r") mode
-    if(fNameList == NULL){
-        //error handling where a file cannot be opened for some reason
-        showError("Error in opening nameList");
+    fData = fopen(data, "r");
+
+    if(fData == NULL){
+
+        showError("Internal error!");
         return;
     }
-    while(fgets(buffer, 32, fNameList)!=NULL){
-        /*The fgets() function has 3 arguments, an array, the size of the array, and a source file.
-        For each loop the buffer array gets a line of text put inside it, until the end of the file is reached where it will be NULL.
-        As the usernames will not be more than 100 characters the size of the buffer array is set to 100*/
-        if(matchString(userName, buffer)){
-            showError("Username already exists");
-            fclose(fNameList);
-            signUp();
-            return;
+
+    while(fgets(buffer, 32, fData)!=NULL){
+
+        if(strstr(buffer, "User: ") == buffer){
+            sscanf(buffer, "User: %s", extractedUsername);
+
+            if(strcmp(extractedUsername, username)== 0){
+
+                showError("Username already exists\n");
+
+                signUp();
+                fclose(fData); // Close the file before returning
+                return;
+
+
+            }
         }
 
     }
-    fclose(fNameList);
-    fMailList = fopen(mailList, "r");
-    if(fMailList == NULL){
-        showError("Error in opening mailList");
-        return;
-    }
-    while(fgets(buffer, 32, fMailList)!=NULL){
-        if(matchString(userEmail, buffer)){
-            showError("Email already exists");
-            fclose(fMailList);
-            signUp();
-            return;
+    // Rewind the file pointer to read from the beginning of the file again
+    rewind(fData);
+
+    // Check if the mail already exist
+
+    while(fgets(buffer, 32, fData)!=NULL){
+        // Split the line into tokens using ':' as delimiter
+        if(strstr(buffer, "Email: ") == buffer){
+            sscanf(buffer, "Email: %s", extractedEmail);
+
+            if(strcmp(extractedEmail, email) == 0){
+
+                showError("Email already exists\n");
+
+                signUp();
+                fclose(fData);
+                return;
+
+            }
         }
+
+
     }
-    fclose(fMailList);
-    //Good practice to close files after using them
-    if(!isElementOf('@', userEmail)||!isElementOf('.', userEmail)){
+
+    fclose(fData);
+
+     if(!isElementOf('@', email)||!isElementOf('.', email)){
         //if email does not contain '@' or '.' this code will execute
         showError("Invalid email (email must contain '@' and '.')");
         signUp();
         return;
     }
-    // Email and username are now validated, we can move on to validating the password
+
+    // Take password
+
     takePass();
-    // Now that the password is also validated we can store this information
+    hash_password(password, hashedPassword);
 
-    fNameList = fopen(nameList, "a");//open the name list text file in the append mode to add a new username at the end
-    fMailList = fopen(mailList, "a");
-    fprintf(fNameList, "\n%s", userName);//add username to name list
-    fprintf(fMailList, "\n%s", userEmail);// add email to mail list
-    fclose(fNameList);
-    fclose(fMailList);
-    //good practice to close files after using them to free up memory
 
-    sprintf(filepath, "data/UserInfo/%s.txt", userName);// this function writes a filepath to a text file that will now be created, the name of the text file is same as the username
-    fUserInfo = fopen(filepath, "a"); // Open file in append mode
-    if (fUserInfo != NULL) { // Check if file opened successfully
-        fprintf(fUserInfo, "%s\n%s\n%s", userName, userEmail, password); // Write info followed by newline
-        fclose(fUserInfo); // Close the file
-    } else {
-        printf("Error opening file.\n"); // Notify if there's an error opening the file
-    }
+    fData = fopen(data, "a");//open the name list text file in the append mode to add a new username at the end
+
+    fprintf(fData, "\nUser: %s", username);//add username to name list
+    fprintf(fData, "\nEmail: %s", email);// add email to mail list
+    fprintf(fData, "\nPassword: %s", hashedPassword);// add email to mail list
+    fclose(fData);
+
+
+
+
+
+
+
+
+
+
 }
+
 void takePass(){
-    system("cls");//clear screen
+    system("cls");
     int i;
     int upper = 0, lower = 0, number = 0, special = 0;// these 4 variables will be used as flags to validate the password later on
-    printf("Enter password: ");//must be more than 12 chars long and less than 33 chars and must contain lowercase,uppercase,numbers and a special symbol
+    printf("Enter password: ");//must be at least 8 chars long and less than 33 chars and must contain lowercase,uppercase,numbers and a special symbol
     takeHiddenInput(password);
     //scanf("%31s", password);
     for(i=0;password[i]!='\0';i++){
@@ -148,69 +232,86 @@ void takePass(){
         if(isElementOf(password[i],specialChars))
             special = 1;
     }
-    if((i<12)||(lower == 0)||(upper == 0)||(number == 0)||(special == 0)){
-        showError("Password must have more than 12 characters, lowercase, uppercase, numbers and special characters");
+    if((i<8)||(lower == 0)||(upper == 0)||(number == 0)||(special == 0)){
+        showError("Password must have at least 8 characters, lowercase, uppercase, numbers and special characters");
         takePass();
         return;
     }
     printf("\nEnter password again: ");
-    takeHiddenInput(tempPass);
-    //printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, tempPass, matchString(password, tempPass));
-    if(!matchString(password, tempPass)){
+    takeHiddenInput(confirmPassword);
+    //printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, confirmPassword, matchString(password, confirmPassword));
+    if(strcmp(password, confirmPassword)){
         showError("Passwords do not match");
         takePass();
         return;
     }
 }
-void signIn(){
-    system("cls");//clear screen
 
-    int i, userFound = 0;// userFound variable will be used as a flag later on
-    char buffer[32], filePath[100];
+void signIn() {
+    system("cls");
+
+    char extractedUsername[50], extractedPassword[50];
+    char buffer[256]; // Increase buffer size for reading lines
+
+
     printf("Enter username: ");
-    scanf("%31s", userName);//limit to 31 characters
-    fNameList = fopen(nameList, "r");
-    if(fNameList==NULL){
-        showError("Could not fetch name list");
-        return;
-    }else{
-        while(fgets(buffer, 32, fNameList)!=NULL){
-            if(matchString(userName, buffer)){
-                userFound = 1;
-                break;
-            }
-        }
-    }
-    fclose(fNameList);
-    if(!userFound){
-        showError("User does not exist");
-        signIn();
-        return;
-    }else{
-        printf("Enter password: ");
-        takeHiddenInput(password);
-        sprintf(filePath, "data/UserInfo/%s.txt", userName);
-        fUserInfo = fopen(filePath, "r");
+    scanf("%49s", username); // Adjust buffer size to prevent buffer overflow
 
-        i=0;
-        while(fgets(buffer, 32, fUserInfo)!=NULL){
-            //printf("Line %d, buffer: %s\n", i, buffer);
-            if(i==2){
-                if(matchString(buffer, password)){
-                    printf("\nWelcome %s\n", userName);
-                    break;
-                }else{
-                    showError("Incorrect Password");
-                    //printf("\nIncorrect Password\nPass: %s\nInput: %s\n", buffer, password);
-                    break;
+    fData = fopen(data, "r");
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    // Search for username and password
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, "User: ") == buffer) {
+            sscanf(buffer, "User: %49s", extractedUsername);
+            if (strcmp(extractedUsername, username) == 0) {
+                // Username found, prompt for password
+
+                printf("Enter password: ");
+                takeHiddenInput(password);
+                hash_password(password, hashedPassword);
+
+                // Search for password
+                while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                    if (strstr(buffer, "Password: ") == buffer) {
+                        sscanf(buffer, "Password: %49s", extractedPassword);
+                        if (strcmp(extractedPassword, hashedPassword) == 0) {
+                            isAuthenticated = 1;
+                            fclose(fData);
+                            menu();
+                        }else {
+                            showError("Incorrect Password!");
+                            fclose(fData);
+
+                            signIn();
+                            return;
+
+
+                        }
+                    }
                 }
+                break; // Exit the outer loop
             }
-            i++;
         }
-        fclose(fUserInfo);
     }
 
+
+    fclose(fData);
 }
+
+unsigned int hash_function(const char str[]) {
+    unsigned int hash = 0;
+    int i = 0;
+    while (str[i] != '\0') {
+        hash = (hash * 32) + str[i];
+        i++;
+    }
+    return hash;
+}
+
 int matchString(char ref[], char input[]){
     //printf("INPUT: %s\nRef: %s", input, ref);
     int i, flag=1;//Assume strings are equal at first
@@ -223,6 +324,7 @@ int matchString(char ref[], char input[]){
     }
     return flag;//Returns 1 if equal and 0 if not equal
 }
+
 int isElementOf(char key, char arr[]){
     int i, flag=0;//Assume that the key is not and element of the array first
     for(i=0;arr[i]!='\0';i++){
@@ -233,6 +335,7 @@ int isElementOf(char key, char arr[]){
     }
     return flag;//Returns 1 if key is an element of the array and 0 if not
 }
+
 void takeHiddenInput(char arr[]){
     int i = 0;
     char ch;
@@ -249,6 +352,19 @@ void takeHiddenInput(char arr[]){
             i++;
         }
     }
-    password[i] = '\0';
-    //printf("%s", password);
+    arr[i] = '\0';
+
+
 }
+
+void hash_password(const char str[], char hashed_pass[]) {
+    unsigned int hash = 0;
+    int i = 0;
+    while (str[i] != '\0') {
+        hash = (hash * 32) + str[i];
+        i++;
+    }
+    // Convert the hash value to a string
+    sprintf(hashed_pass, "%u", hash);
+}
+

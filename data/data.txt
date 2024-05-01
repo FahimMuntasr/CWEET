@@ -1,0 +1,17 @@
+User: John
+Email: john@example.com
+Password: password123
+Posts:
+- First post (2024-05-01)
+- Second post (2024-05-05)
+
+User: Alice
+Email: alice@example.com
+Password: alice123
+Posts:
+- First post (2024-04-25)
+- New post added by Alice (2024-05-10)
+
+User: Mosabbir
+Email: kmosabbir@gmail.com
+Password: 2234110625
