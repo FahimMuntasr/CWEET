@@ -3,14 +3,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-int isAuthenticated = 0;
-
 // fData: Contains all the users along with their posts
 
 FILE *fData;
 
-//Theses arrays hold the location of the data file
+//These arrays hold the location of the data file
 char data[] = "./data/data.txt";
 
 char validChars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!_1234567890";//array of valid characters, will be used later for username validation
@@ -20,9 +17,10 @@ char numbers[] = "1234567890";
 char specialChars[] = "!@#$%^&*()-_+={}[]|\`~<>,.?/:;";
 
 //! TODO: USE STRUCTS!
-char username[32], email[32], password[32], confirmPassword[32], hashedPassword[32];
-
-
+struct userInfo{
+    char name[32], email[32], password[32], confirmPassword[32], hashedPassword[32];
+};
+struct userInfo user;
 void authenticate();
 
 void signUp();
@@ -34,10 +32,6 @@ void takeHiddenInput(char[]);// takes the input array as an argument
 
 unsigned int hashingFunction(char[]); // hashes the password
 int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
-int matchString(char[], char[]);//Returns 1 if two strings are same
-
-
-
 
 void showError(char[]);//Takes the error reason as an argument and prints it on the screen
 void menu();
@@ -45,15 +39,7 @@ void menu();
 int main(){
     system("cls");
 
-    if(isAuthenticated){
-
-        menu();
-
-    }else {
-
-        authenticate();
-
-    }
+    authenticate();
 
     return 0;
 }
@@ -70,12 +56,12 @@ void menu(){
         return;
     }else if(input == 'q'||input == 'Q'){
         exit(0); // Exit the program
-    }else if(input == 'C'|| input == 'c'){
+    }else if(input == 'E'|| input == 'E'){
         return;
     }else{
 
         showError("Invalid Input");
-        main();
+        menu();
     }
 
 
@@ -91,12 +77,12 @@ void authenticate(){
     if(input == 'L'|| input == 'l'){
         signIn();
     }else if(input == 'e'||input == 'E'){
-        return 0;//exit
+        return;//exit
     }else if(input == 'C'|| input == 'c'){
         signUp();
     }else{
         showError("Invalid Input");
-        main();//recursively call the main function until the user inputs a valid character
+        authenticate();//recursively call the main function until the user inputs a valid character
     }
 
 
@@ -113,14 +99,14 @@ void signUp(){
 
     char buffer[32], filepath[100];
     printf("Username: ");
-    scanf("%31s", username);// limit input size to 64 chars
+    scanf("%31s", user.name);// limit input size to 32 chars
     printf("Email: ");
-    scanf("%31s", email);
+    scanf("%31s", user.email);
 
     //printf("%s\n%s\n", userName, userEmail);
     //Check for invalid characters
-    for(i=0;username[i]!='\0';i++){
-        if(!isElementOf(username[i], validChars)){
+    for(i=0;user.name[i]!='\0';i++){
+        if(!isElementOf(user.name[i], validChars)){
             //if the function isElementOf() returns 0 it means that the character is not a valid character
 
             showError("Username contains invalid characters");
@@ -145,7 +131,7 @@ void signUp(){
         if(strstr(buffer, "User: ") == buffer){
             sscanf(buffer, "User: %s", extractedUsername);
 
-            if(strcmp(extractedUsername, username)== 0){
+            if(strcmp(extractedUsername, user.name)== 0){
 
                 showError("Username already exists\n");
 
@@ -168,7 +154,7 @@ void signUp(){
         if(strstr(buffer, "Email: ") == buffer){
             sscanf(buffer, "Email: %s", extractedEmail);
 
-            if(strcmp(extractedEmail, email) == 0){
+            if(strcmp(extractedEmail, user.email) == 0){
 
                 showError("Email already exists\n");
 
@@ -184,7 +170,7 @@ void signUp(){
 
     fclose(fData);
 
-     if(!isElementOf('@', email)||!isElementOf('.', email)){
+     if(!isElementOf('@', user.email)||!isElementOf('.', user.email)){
         //if email does not contain '@' or '.' this code will execute
         showError("Invalid email (email must contain '@' and '.')");
         signUp();
@@ -194,14 +180,14 @@ void signUp(){
     // Take password
 
     takePass();
-    hash_password(password, hashedPassword);
+    hash_password(user.password, user.hashedPassword);
 
 
     fData = fopen(data, "a");//open the name list text file in the append mode to add a new username at the end
 
-    fprintf(fData, "\nUser: %s", username);//add username to name list
-    fprintf(fData, "\nEmail: %s", email);// add email to mail list
-    fprintf(fData, "\nPassword: %s", hashedPassword);// add email to mail list
+    fprintf(fData, "\nUser: %s", user.name);//add username to name list
+    fprintf(fData, "\nEmail: %s", user.email);// add email to mail list
+    fprintf(fData, "\nPassword: %s", user.hashedPassword);// add password
     fclose(fData);
 
 
@@ -220,16 +206,16 @@ void takePass(){
     int i;
     int upper = 0, lower = 0, number = 0, special = 0;// these 4 variables will be used as flags to validate the password later on
     printf("Enter password: ");//must be at least 8 chars long and less than 33 chars and must contain lowercase,uppercase,numbers and a special symbol
-    takeHiddenInput(password);
+    takeHiddenInput(user.password);
     //scanf("%31s", password);
-    for(i=0;password[i]!='\0';i++){
-        if(isElementOf(password[i],lowerCase))
+    for(i=0;user.password[i]!='\0';i++){
+        if(isElementOf(user.password[i],lowerCase))
             lower = 1;
-        if(isElementOf(password[i],upperCase))
+        if(isElementOf(user.password[i],upperCase))
             upper = 1;
-        if(isElementOf(password[i],numbers))
+        if(isElementOf(user.password[i],numbers))
             number = 1;
-        if(isElementOf(password[i],specialChars))
+        if(isElementOf(user.password[i],specialChars))
             special = 1;
     }
     if((i<8)||(lower == 0)||(upper == 0)||(number == 0)||(special == 0)){
@@ -238,9 +224,9 @@ void takePass(){
         return;
     }
     printf("\nEnter password again: ");
-    takeHiddenInput(confirmPassword);
+    takeHiddenInput(user.confirmPassword);
     //printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, confirmPassword, matchString(password, confirmPassword));
-    if(strcmp(password, confirmPassword)){
+    if(strcmp(user.password, user.confirmPassword)){
         showError("Passwords do not match");
         takePass();
         return;
@@ -255,7 +241,7 @@ void signIn() {
 
 
     printf("Enter username: ");
-    scanf("%49s", username); // Adjust buffer size to prevent buffer overflow
+    scanf("%49s", user.name); // Adjust buffer size to prevent buffer overflow
 
     fData = fopen(data, "r");
     if (fData == NULL) {
@@ -267,19 +253,18 @@ void signIn() {
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, "User: ") == buffer) {
             sscanf(buffer, "User: %49s", extractedUsername);
-            if (strcmp(extractedUsername, username) == 0) {
+            if (strcmp(extractedUsername, user.name) == 0) {
                 // Username found, prompt for password
 
                 printf("Enter password: ");
-                takeHiddenInput(password);
-                hash_password(password, hashedPassword);
+                takeHiddenInput(user.password);
+                hash_password(user.password, user.hashedPassword);
 
                 // Search for password
                 while (fgets(buffer, sizeof(buffer), fData) != NULL) {
                     if (strstr(buffer, "Password: ") == buffer) {
                         sscanf(buffer, "Password: %49s", extractedPassword);
-                        if (strcmp(extractedPassword, hashedPassword) == 0) {
-                            isAuthenticated = 1;
+                        if (strcmp(extractedPassword, user.hashedPassword) == 0) {
                             fclose(fData);
                             menu();
                         }else {
@@ -294,6 +279,9 @@ void signIn() {
                     }
                 }
                 break; // Exit the outer loop
+            }else{
+                showError("Username not found");
+                signIn();
             }
         }
     }
@@ -310,19 +298,6 @@ unsigned int hash_function(const char str[]) {
         i++;
     }
     return hash;
-}
-
-int matchString(char ref[], char input[]){
-    //printf("INPUT: %s\nRef: %s", input, ref);
-    int i, flag=1;//Assume strings are equal at first
-    for(i=0;ref[i]!='\0';i++){
-        //printf("\n%d: %c (ref) %c (input) %d\n", i, ref[i], input[i], ref[i] == input[i]);
-        if(ref[i] != input[i]){
-            flag = 0;
-            break;
-        }
-    }
-    return flag;//Returns 1 if equal and 0 if not equal
 }
 
 int isElementOf(char key, char arr[]){
