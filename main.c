@@ -14,7 +14,7 @@ char validChars[] = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ!_12345
 char lowerCase[] = "abcdefghijklmnopqrstuvwxyz";
 char upperCase[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char numbers[] = "1234567890";
-char specialChars[] = "!@#$%^&*()-_+={}[]|\`~<>,.?/:;";
+char specialChars[] = "!@#$%%^&*()-_+={}[]|\\`~<>,.?/:;";
 
 //! TODO: USE STRUCTS!
 struct userInfo{
