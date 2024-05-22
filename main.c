@@ -2,9 +2,12 @@
 #include <conio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+#define MAX_POSTS 1000
+#define POSTS_PER_PAGE 5
 
 // fData: Contains all the users along with their posts
-
 FILE *fData;
 
 //These arrays hold the location of the data file
@@ -16,25 +19,54 @@ char upperCase[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char numbers[] = "1234567890";
 char specialChars[] = "!@#$%^&*()-_+={}[]|\`~<>,.?/:;";
 
-//! TODO: USE STRUCTS!
-struct userInfo{
-    char name[32], email[32], password[32], confirmPassword[32], hashedPassword[32];
-};
-struct userInfo user;
-void authenticate();
+int postCount = 0;
 
+
+struct userInfo{
+    char name[32],
+    email[32],
+    password[32],
+    confirmPassword[32],
+    hashedPassword[32];
+};
+
+struct Post{
+    char postId[64];
+    char content[256];
+    char date[32];
+
+};
+struct Post posts[MAX_POSTS];
+
+struct userInfo user;
+
+// Functions related to the authentication section
+void authenticate();
 void signUp();
 void signIn();
-
 void takePass();
 void hash_password(const char str[], char hashed_pass[]);
 void takeHiddenInput(char[]);// takes the input array as an argument
-
 unsigned int hashingFunction(char[]); // hashes the password
-int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
 
+int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
 void showError(char[]);//Takes the error reason as an argument and prints it on the screen
 void menu();
+
+// CRUD Post
+void loadPosts();
+void displayPosts(int);
+void addPost();
+void loadUserPosts();
+void profilePage();
+void deletePost(char postId[]);
+void editPost(char postId[]);
+
+
+
+
+
+void explorePage();
 
 int main(){
     system("cls");
@@ -46,25 +78,23 @@ int main(){
 
 
 
-void menu(){
+void menu() {
     system("cls");
 
     char input;
-    printf("[P]rofile\n[E]xlore Page\n[Q]uit\n");
-    scanf(" %c", &input);
-    if(input == 'P'|| input == 'p'){
-        return;
-    }else if(input == 'q'||input == 'Q'){
-        exit(0); // Exit the program
-    }else if(input == 'E'|| input == 'E'){
-        return;
-    }else{
 
+    printf("[P]rofile\n[E]xplore Page\n[Q]uit\n");
+    scanf(" %c", &input);
+    if (input == 'P' || input == 'p') {
+        profilePage();
+    } else if (input == 'q' || input == 'Q') {
+        exit(0); // Exit the program
+    } else if (input == 'E' || input == 'e') {
+        explorePage();
+    } else {
         showError("Invalid Input");
         menu();
     }
-
-
 }
 
 
@@ -92,113 +122,94 @@ void showError(char error[]){
     printf("\n%s\n", error);
     system("pause");//this command pauses the program until user presses any key
 }
-void signUp(){
+void signUp() {
     system("cls");
     char extractedUsername[50], extractedEmail[50];
     int i;
 
-    char buffer[32], filepath[100];
+    char buffer[256];  // Increase buffer size
     printf("Username: ");
-    scanf("%31s", user.name);// limit input size to 32 chars
+    scanf("%31s", user.name); // limit input size to 32 chars
     printf("Email: ");
     scanf("%31s", user.email);
 
-    //printf("%s\n%s\n", userName, userEmail);
-    //Check for invalid characters
-    for(i=0;user.name[i]!='\0';i++){
-        if(!isElementOf(user.name[i], validChars)){
-            //if the function isElementOf() returns 0 it means that the character is not a valid character
-
+    // Check for invalid characters in username
+    for (i = 0; user.name[i] != '\0'; i++) {
+        if (!isElementOf(user.name[i], validChars)) {
             showError("Username contains invalid characters");
-
-            //recursively call back the function again
-            signUp();
+            signUp(); // Call signUp again
             return;
         }
     }
 
-    //check if username already exists
+    // Check if username already exists
     fData = fopen(data, "r");
-
-    if(fData == NULL){
-
+    if (fData == NULL) {
         showError("Internal error!");
         return;
     }
 
-    while(fgets(buffer, 32, fData)!=NULL){
+    // Create the search string for username
+    char searchName[100];
+    snprintf(searchName, sizeof(searchName), "User: %s", user.name);
 
-        if(strstr(buffer, "User: ") == buffer){
-            sscanf(buffer, "User: %s", extractedUsername);
-
-            if(strcmp(extractedUsername, user.name)== 0){
-
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strncmp(buffer, "User: ", 6) == 0) {
+            sscanf(buffer, "User: %49s", extractedUsername);
+            if (strcmp(extractedUsername, user.name) == 0) {
                 showError("Username already exists\n");
-
-                signUp();
                 fclose(fData); // Close the file before returning
+                signUp(); // Call signUp again
                 return;
-
-
             }
         }
-
     }
+
     // Rewind the file pointer to read from the beginning of the file again
     rewind(fData);
 
-    // Check if the mail already exist
+    // Create the search string for email
+    char searchEmail[100];
+    snprintf(searchEmail, sizeof(searchEmail), "Email: %s", user.email);
 
-    while(fgets(buffer, 32, fData)!=NULL){
-        // Split the line into tokens using ':' as delimiter
-        if(strstr(buffer, "Email: ") == buffer){
-            sscanf(buffer, "Email: %s", extractedEmail);
-
-            if(strcmp(extractedEmail, user.email) == 0){
-
+    // Check if the email already exists
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strncmp(buffer, "Email: ", 7) == 0) {
+            sscanf(buffer, "Email: %49s", extractedEmail);
+            if (strcmp(extractedEmail, user.email) == 0) {
                 showError("Email already exists\n");
-
-                signUp();
-                fclose(fData);
+                fclose(fData); // Close the file before returning
+                signUp(); // Call signUp again
                 return;
-
             }
         }
-
-
     }
 
     fclose(fData);
 
-     if(!isElementOf('@', user.email)||!isElementOf('.', user.email)){
-        //if email does not contain '@' or '.' this code will execute
+    // Check if email contains '@' and '.'
+    if (!isElementOf('@', user.email) || !isElementOf('.', user.email)) {
         showError("Invalid email (email must contain '@' and '.')");
-        signUp();
+        signUp(); // Call signUp again
         return;
     }
 
     // Take password
-
     takePass();
     hash_password(user.password, user.hashedPassword);
 
+    fData = fopen(data, "a"); // Open the file in append mode
+    if (fData == NULL) {
+        showError("Could not open data file to save user details");
+        return;
+    }
 
-    fData = fopen(data, "a");//open the name list text file in the append mode to add a new username at the end
-
-    fprintf(fData, "\nUser: %s", user.name);//add username to name list
-    fprintf(fData, "\nEmail: %s", user.email);// add email to mail list
-    fprintf(fData, "\nPassword: %s", user.hashedPassword);// add password
+    fprintf(fData, "\nUser: %s", user.name); // Add username
+    fprintf(fData, "\nEmail: %s", user.email); // Add email
+    fprintf(fData, "\nPassword: %s", user.hashedPassword); // Add hashed password
     fclose(fData);
 
-
-
-
-
-
-
-
-
-
+    authenticate(); // Call authenticate function
 }
 
 void takePass(){
@@ -233,15 +244,21 @@ void takePass(){
     }
 }
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+// Assuming the rest of your program is already defined as in your original code
+
 void signIn() {
     system("cls");
 
-    char extractedUsername[50], extractedPassword[50];
-    char buffer[256]; // Increase buffer size for reading lines
-
+    char extractedPassword[50];
+    char buffer[256];
+    int usernameFound = 0;
 
     printf("Enter username: ");
-    scanf("%49s", user.name); // Adjust buffer size to prevent buffer overflow
+    scanf("%49s", user.name);
 
     fData = fopen(data, "r");
     if (fData == NULL) {
@@ -249,46 +266,48 @@ void signIn() {
         return;
     }
 
-    // Search for username and password
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
-        if (strstr(buffer, "User: ") == buffer) {
+        if (strncmp(buffer, "User: ", 6) == 0) {
+            char extractedUsername[50];
             sscanf(buffer, "User: %49s", extractedUsername);
             if (strcmp(extractedUsername, user.name) == 0) {
-                // Username found, prompt for password
+                usernameFound = 1;
 
+                // Username found, prompt for password
                 printf("Enter password: ");
                 takeHiddenInput(user.password);
                 hash_password(user.password, user.hashedPassword);
 
-                // Search for password
+                // Look for the corresponding password line
                 while (fgets(buffer, sizeof(buffer), fData) != NULL) {
-                    if (strstr(buffer, "Password: ") == buffer) {
+                    if (strncmp(buffer, "Password: ", 10) == 0) {
                         sscanf(buffer, "Password: %49s", extractedPassword);
                         if (strcmp(extractedPassword, user.hashedPassword) == 0) {
                             fclose(fData);
                             menu();
-                        }else {
+                            return; // Exit the function after successful login
+                        } else {
                             showError("Incorrect Password!");
                             fclose(fData);
-
                             signIn();
                             return;
-
-
                         }
                     }
+                    // Stop searching if another user is encountered
+                    if (strncmp(buffer, "User: ", 6) == 0) break;
                 }
-                break; // Exit the outer loop
-            }else{
-                showError("Username not found");
-                signIn();
             }
         }
     }
 
-
     fclose(fData);
+
+    if (!usernameFound) {
+        showError("Username not found");
+        signIn();
+    }
 }
+
 
 unsigned int hash_function(const char str[]) {
     unsigned int hash = 0;
@@ -342,4 +361,370 @@ void hash_password(const char str[], char hashed_pass[]) {
     // Convert the hash value to a string
     sprintf(hashed_pass, "%u", hash);
 }
+
+
+void explorePage() {
+    loadPosts();
+
+    displayPosts(1);
+}
+
+
+
+void loadPosts(){
+
+    char buffer[256];
+
+    fData = fopen(data, "r");
+
+     if (fData == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    while(fgets(buffer, sizeof(buffer), fData) != NULL){
+        if(strstr(buffer, "PostID: ") == buffer){
+             sscanf(buffer, "PostID: %63[^\n]", posts[postCount].postId);
+            fgets(buffer, sizeof(buffer), fData); // Read Content line
+            sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
+            fgets(buffer, sizeof(buffer), fData); // Read Date line
+            sscanf(buffer, "Date: %31[^\n]", posts[postCount].date);
+            postCount++;
+        }
+    }
+    fclose(fData);
+
+
+
+}
+
+
+void displayPosts(int page) {
+    system("cls");
+    int start = (page - 1) * POSTS_PER_PAGE;
+    int end = start + POSTS_PER_PAGE;
+    if (start >= postCount) {
+        showError("No more posts to display.");
+        return;
+    }
+    if (end > postCount) end = postCount;
+
+    for (int i = start; i < end; i++) {
+        printf("PostID: %s\n", posts[i].postId);
+        printf("Content: %s\n", posts[i].content);
+        printf("Date: %s\n\n", posts[i].date);
+    }
+
+    printf("< [P]revious | [N]ext >\n");
+    printf("[Q]uit\n");
+
+    char input;
+    scanf(" %c", &input);
+    if (input == 'P' || input == 'p') {
+        if (page > 1) {
+            displayPosts(page - 1);
+        } else {
+            showError("No previous page.");
+            displayPosts(page);
+        }
+    } else if (input == 'N' || input == 'n') {
+        if (end < postCount) {
+            displayPosts(page + 1);
+        } else {
+            showError("No next page.");
+            displayPosts(page);
+        }
+    } else if (input == 'Q' || input == 'q') {
+        menu();
+    } else {
+        showError("Invalid Input");
+        displayPosts(page);
+    }
+}
+
+
+
+
+void loadUserPosts() {
+    char buffer[256];
+    char searchString[100];
+    snprintf(searchString, sizeof(searchString), "User: %s", user.name);
+
+    fData = fopen(data, "r");
+
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    postCount = 0; // Reset post count
+
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, searchString) == buffer) {
+            // Skip the email and password lines
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
+
+            // Read posts for the user
+            while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                if (strstr(buffer, "PostID: ") == buffer) {
+                    sscanf(buffer, "PostID: %63[^\n]", posts[postCount].postId);
+                    fgets(buffer, sizeof(buffer), fData); // Read Content line
+                    sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
+                    fgets(buffer, sizeof(buffer), fData); // Read Date line
+                    sscanf(buffer, "Date: %31[^\n]", posts[postCount].date);
+                    postCount++;
+                }
+                // Stop reading if another user is encountered
+                if (strstr(buffer, "User: ") == buffer) break;
+            }
+        }
+    }
+
+    fclose(fData);
+}
+
+
+void profilePage() {
+    system("cls");
+    printf("Username: %s\n", user.name);
+    printf("Email: %s\n\n", user.email);
+    loadUserPosts();
+
+
+
+    displayUserPosts(1);
+}
+
+void displayUserPosts(int page) {
+    system("cls");
+    int start = (page - 1) * POSTS_PER_PAGE;
+    int end = start + POSTS_PER_PAGE;
+    if (start >= postCount) {
+        showError("No more posts to display.");
+        return;
+    }
+    if (end > postCount) end = postCount;
+
+    for (int i = start; i < end; i++) {
+        // Display in reverse order for recent posts at top
+        int index = postCount - 1 - i;
+        if (index < 0) break;
+
+        printf("PostID: %s\n", posts[index].postId);
+        printf("Content: %s\n", posts[index].content);
+        printf("Date: %s\n", posts[index].date);
+        printf("[D]elete  [E]dit\n\n");
+    }
+
+    printf("< [P]revious | [N]ext >\n");
+    printf("[A]dd Post\n");
+    printf("[Q]uit to Menu\n");
+
+    char input;
+    char postId[64];
+    scanf(" %c", &input);
+    if (input == 'P' || input == 'p') {
+        if (page > 1) {
+            displayUserPosts(page - 1);
+        } else {
+            showError("No previous page.");
+            displayUserPosts(page);
+        }
+    } else if (input == 'N' || input == 'n') {
+        if (end < postCount) {
+            displayUserPosts(page + 1);
+        } else {
+            showError("No next page.");
+            displayUserPosts(page);
+        }
+    } else if (input == 'A' || input == 'a') {
+        addPost();
+        displayUserPosts(1); // Go back to the first page to see the new post
+    } else if (input == 'Q' || input == 'q') {
+        menu();
+    } else if (input == 'D' || input == 'd') {
+        printf("Enter PostID to delete: ");
+        scanf("%63s", postId);
+        deletePost(postId);
+        displayUserPosts(page);
+    } else if (input == 'E' || input == 'e') {
+        printf("Enter PostID to edit: ");
+        scanf("%63s", postId);
+        editPost(postId);
+        displayUserPosts(page);
+    } else {
+        showError("Invalid Input");
+        displayUserPosts(page);
+    }
+}
+
+
+void deletePost(char postId[]) {
+    FILE *tempFile;
+    char buffer[256];
+    char searchString[100];
+    snprintf(searchString, sizeof(searchString), "PostID: %s", postId);
+
+    fData = fopen(data, "r");
+    tempFile = fopen("temp.txt", "w");
+
+    if (fData == NULL || tempFile == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    int skip = 0;
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, searchString) == buffer) {
+            skip = 1;
+        }
+        if (!skip) {
+            fputs(buffer, tempFile);
+        } else {
+            // Skip next two lines (Content and Date)
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
+            skip = 0;
+        }
+    }
+
+    fclose(fData);
+    fclose(tempFile);
+    remove(data);
+    rename("temp.txt", data);
+
+    printf("Post deleted successfully.");
+    profilePage();
+    return;
+}
+
+
+void editPost(char postId[]) {
+    FILE *tempFile;
+    char buffer[256];
+    char searchString[100];
+    snprintf(searchString, sizeof(searchString), "PostID: %s", postId);
+
+    fData = fopen(data, "r");
+    tempFile = fopen("temp.txt", "w");
+
+    if (fData == NULL || tempFile == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    int editing = 0;
+    char newContent[256];
+
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, searchString) == buffer) {
+            fputs(buffer, tempFile);
+            fgets(buffer, sizeof(buffer), fData);
+            printf("Enter new content: ");
+            getchar(); // consume newline left by previous input
+            fgets(newContent, sizeof(newContent), stdin);
+            newContent[strcspn(newContent, "\n")] = 0; // remove newline character
+            fprintf(tempFile, "Content: %s\n", newContent);
+            fgets(buffer, sizeof(buffer), fData); // Date line remains unchanged
+            fputs(buffer, tempFile);
+            editing = 1;
+        } else {
+            fputs(buffer, tempFile);
+        }
+    }
+
+    fclose(fData);
+    fclose(tempFile);
+    remove(data);
+    rename("temp.txt", data);
+
+    if (editing) {
+        profilePage();
+        return;
+        showError("Post edited successfully.");
+    } else {
+        showError("PostID not found.");
+    }
+}
+
+
+void addPost() {
+    char newContent[256];
+    char newPostId[64];
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    char date[32];
+
+    snprintf(date, sizeof(date), "%d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+
+    printf("Enter post content: ");
+    getchar(); // consume newline left by previous input
+    fgets(newContent, sizeof(newContent), stdin);
+    newContent[strcspn(newContent, "\n")] = 0; // remove newline character
+
+    // Generate new PostID
+    snprintf(newPostId, sizeof(newPostId), "%s_%d", user.name, postCount + 1);
+
+    // Read the entire file content into memory
+    fData = fopen(data, "r");
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    char fileContent[10000];
+    fileContent[0] = '\0'; // Initialize the fileContent as an empty string
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        strcat(fileContent, buffer);
+    }
+    fclose(fData);
+
+    // Find the position to insert the new post
+    char* pos = strstr(fileContent, user.name);
+    if (pos == NULL) {
+        showError("User not found in data file");
+        return;
+    }
+
+    // Find the end of the user's posts
+    char* endPos = strstr(pos, "User: ");
+    if (endPos == NULL) {
+        endPos = fileContent + strlen(fileContent); // Point to the end of the file
+    } else {
+        // Move back to the previous line
+        while (endPos > fileContent && *(endPos - 1) != '\n') {
+            endPos--;
+        }
+    }
+
+    // Create the new post entry
+    char newPostEntry[512];
+    snprintf(newPostEntry, sizeof(newPostEntry), "PostID: %s\nContent: %s\nDate: %s\n\n", newPostId, newContent, date);
+
+    // Insert the new post entry
+    char updatedContent[20000];
+    strncpy(updatedContent, fileContent, endPos - fileContent);
+    updatedContent[endPos - fileContent] = '\0';
+    strcat(updatedContent, newPostEntry);
+    strcat(updatedContent, endPos);
+
+    // Write the updated content back to the file
+    fData = fopen(data, "w");
+    if (fData == NULL) {
+        showError("Could not open data file for writing");
+        return;
+    }
+    fprintf(fData, "%s", updatedContent);
+    fclose(fData);
+
+    // Refresh post count and load posts again
+    postCount++;
+    loadUserPosts();
+
+    printf("Post added successfully.");
+}
+
+
 
