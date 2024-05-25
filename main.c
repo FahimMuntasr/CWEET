@@ -244,11 +244,7 @@ void takePass(){
     }
 }
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 
-// Assuming the rest of your program is already defined as in your original code
 
 void signIn() {
     system("cls");
