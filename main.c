@@ -488,7 +488,7 @@ void loadUserPosts() {
 void profilePage() {
     system("cls");
     printf("Username: %s\n", user.name);
-    printf("Email: %s\n\n", user.email);
+
     loadUserPosts();
 
 
@@ -498,6 +498,25 @@ void profilePage() {
 
 void displayUserPosts(int page) {
     system("cls");
+    if (postCount == 0) {
+        printf("No posts available.\n");
+        printf("[A]dd Post\n");
+        printf("[Q]uit to Menu\n");
+
+        char input;
+        scanf(" %c", &input);
+        if (input == 'A' || input == 'a') {
+            addPost();
+            displayUserPosts(1); // Go back to the first page to see the new post
+        } else if (input == 'Q' || input == 'q') {
+            menu();
+        } else {
+            showError("Invalid Input");
+            displayUserPosts(page);
+        }
+        return;
+    }
+
     int start = (page - 1) * POSTS_PER_PAGE;
     int end = start + POSTS_PER_PAGE;
     if (start >= postCount) {
@@ -663,9 +682,6 @@ void addPost() {
     fgets(newContent, sizeof(newContent), stdin);
     newContent[strcspn(newContent, "\n")] = 0; // remove newline character
 
-    // Generate new PostID
-    snprintf(newPostId, sizeof(newPostId), "%s_%d", user.name, postCount + 1);
-
     // Read the entire file content into memory
     fData = fopen(data, "r");
     if (fData == NULL) {
@@ -688,6 +704,24 @@ void addPost() {
         return;
     }
 
+    // Find the latest PostID for the user
+    int maxPostNumber = 0;
+    char* postPos = pos;
+    while ((postPos = strstr(postPos, "PostID: ")) != NULL) {
+        if (strncmp(postPos + strlen("PostID: "), user.name, strlen(user.name)) == 0) {
+            int postNumber;
+            if (sscanf(postPos + strlen("PostID: ") + strlen(user.name) + 1, "%d", &postNumber) == 1) {
+                if (postNumber > maxPostNumber) {
+                    maxPostNumber = postNumber;
+                }
+            }
+        }
+        postPos++;
+    }
+
+    // Generate new PostID
+    snprintf(newPostId, sizeof(newPostId), "%s_%d", user.name, maxPostNumber + 1);
+
     // Find the end of the user's posts
     char* endPos = strstr(pos, "User: ");
     if (endPos == NULL) {
@@ -701,7 +735,7 @@ void addPost() {
 
     // Create the new post entry
     char newPostEntry[512];
-    snprintf(newPostEntry, sizeof(newPostEntry), "PostID: %s\nContent: %s\nDate: %s\n\n", newPostId, newContent, date);
+    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\n\n", newPostId, newContent, date);
 
     // Insert the new post entry
     char updatedContent[20000];
@@ -723,8 +757,6 @@ void addPost() {
     postCount++;
     loadUserPosts();
 
-    printf("Post added successfully.");
+    printf("Post added successfully.\n");
 }
-
-
 
