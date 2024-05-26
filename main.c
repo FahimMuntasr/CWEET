@@ -645,7 +645,14 @@ void editPost(char postId[]) {
             fgets(newContent, sizeof(newContent), stdin);
             newContent[strcspn(newContent, "\n")] = 0; // remove newline character
             fprintf(tempFile, "Content: %s\n", newContent);
-            fgets(buffer, sizeof(buffer), fData); // Date line remains unchanged
+
+
+            // Update the date to the current time
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            fprintf(tempFile, "Date: %04d-%02d-%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+
+
             fputs(buffer, tempFile);
             editing = 1;
         } else {
