@@ -30,10 +30,16 @@ struct userInfo{
     hashedPassword[32];
 };
 
+struct Likes{
+    int likeCount;
+    int toggle;
+};
+
 struct Post{
     char postId[64];
     char content[256];
     char date[32];
+    struct Likes likes;
 
 };
 struct Post posts[MAX_POSTS];
@@ -66,7 +72,11 @@ void editPost(char postId[]);
 
 
 
+
 void explorePage();
+void displayUserPosts(int page);
+
+void likePost(char postId[]);
 
 int main(){
     system("cls");
@@ -389,6 +399,16 @@ void loadPosts(){
             sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
             fgets(buffer, sizeof(buffer), fData); // Read Date line
             sscanf(buffer, "Date: %31[^\n]", posts[postCount].date);
+
+            // Read the likes count
+            fgets(buffer, sizeof(buffer), fData);
+            sscanf(buffer, "Likes: %d\n", &posts[postCount].likes.likeCount);
+
+            // Read the toggle value
+            fgets(buffer, sizeof(buffer), fData);
+            sscanf(buffer, "Liked: %d\n", &posts[postCount].likes.toggle);
+
+
             postCount++;
         }
     }
@@ -405,6 +425,7 @@ void displayPosts(int page) {
     int end = start + POSTS_PER_PAGE;
     if (start >= postCount) {
         showError("No more posts to display.");
+        explorePage();
         return;
     }
     if (end > postCount) end = postCount;
@@ -413,6 +434,10 @@ void displayPosts(int page) {
         printf("PostID: %s\n", posts[i].postId);
         printf("Content: %s\n", posts[i].content);
         printf("Date: %s\n\n", posts[i].date);
+        printf("Likes: %d\n", posts[i].likes.likeCount);
+        printf("[L]ike\n");
+        printf("=====================================\n\n");
+
     }
 
     printf("< [P]revious | [N]ext >\n");
@@ -436,6 +461,12 @@ void displayPosts(int page) {
         }
     } else if (input == 'Q' || input == 'q') {
         menu();
+    } else if(input == 'L' || input == 'l'){
+        printf("Enter PostID to like: ");
+        char postId[64];
+        scanf("%63s", postId);
+        likePost(postId);
+        explorePage();
     } else {
         showError("Invalid Input");
         displayPosts(page);
@@ -473,6 +504,14 @@ void loadUserPosts() {
                     sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
                     fgets(buffer, sizeof(buffer), fData); // Read Date line
                     sscanf(buffer, "Date: %31[^\n]", posts[postCount].date);
+
+                    // Read the likes count
+                    fgets(buffer, sizeof(buffer), fData);
+                    sscanf(buffer, "Likes: %d\n", &posts[postCount].likes.likeCount);
+
+                    // Read the toggle value
+                    fgets(buffer, sizeof(buffer), fData);
+                    sscanf(buffer, "Liked: %d\n", &posts[postCount].likes.toggle);
                     postCount++;
                 }
                 // Stop reading if another user is encountered
@@ -488,6 +527,7 @@ void loadUserPosts() {
 void profilePage() {
     system("cls");
     printf("Username: %s\n", user.name);
+
 
     loadUserPosts();
 
@@ -533,7 +573,11 @@ void displayUserPosts(int page) {
         printf("PostID: %s\n", posts[index].postId);
         printf("Content: %s\n", posts[index].content);
         printf("Date: %s\n", posts[index].date);
-        printf("[D]elete  [E]dit\n\n");
+        printf("Likes: %d\n", posts[index].likes.likeCount);
+
+        printf("====================================\n\n");
+        printf("\t[L]ike [D]elete   [E]dit\n\n");
+        printf("====================================\n\n");
     }
 
     printf("< [P]revious | [N]ext >\n");
@@ -572,12 +616,91 @@ void displayUserPosts(int page) {
         scanf("%63s", postId);
         editPost(postId);
         displayUserPosts(page);
+    } else if(input == 'L' || input == 'l'){
+        printf("Enter PostID to like: ");
+        scanf("%63s", postId);
+        likePost(postId);
+        profilePage();
+
+
     } else {
         showError("Invalid Input");
         displayUserPosts(page);
     }
 }
 
+void likePost(char postId[]) {
+    FILE *tempFile;
+    char buffer[256];
+    tempFile = fopen("temp.txt", "w");
+
+    if (tempFile == NULL) {
+        showError("Could not open temp file for writing");
+        return;
+    }
+
+    fData = fopen(data, "r");
+    if (fData == NULL) {
+        showError("Could not open data file");
+        fclose(tempFile);
+        return;
+    }
+
+    int foundPost = 0;
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        fputs(buffer, tempFile);
+
+        if (strncmp(buffer, "PostID: ", 8) == 0) {
+            char extractedPostId[64];
+            sscanf(buffer, "PostID: %63[^\n]", extractedPostId);
+            if (strcmp(extractedPostId, postId) == 0) {
+                foundPost = 1;
+
+                
+                for (int i = 0; i < 2; i++) {
+                    fgets(buffer, sizeof(buffer), fData);
+                    fputs(buffer, tempFile);
+                }
+
+                // Read the likes count
+                int likesCount;
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "Likes: %d", &likesCount);
+
+                // Read the toggle value
+                int toggle;
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "Liked: %d", &toggle);
+
+                // Toggle the like status and update the likes count
+                if (toggle == 0) {
+                    toggle = 1;
+                    likesCount++;
+                } else {
+                    toggle = 0;
+                    likesCount--;
+                }
+
+                // Write the updated likes and toggle values
+                fprintf(tempFile, "Likes: %d\n", likesCount);
+                fprintf(tempFile, "Liked: %d\n", toggle);
+
+                // Continue reading and writing the rest of the file
+                continue;
+            }
+        }
+    }
+
+    fclose(fData);
+    fclose(tempFile);
+
+    remove(data);
+    rename("temp.txt", data);
+
+    if (!foundPost) {
+        showError("Post not found.");
+    }
+}
 
 void deletePost(char postId[]) {
     FILE *tempFile;
@@ -604,6 +727,11 @@ void deletePost(char postId[]) {
             // Skip next two lines (Content and Date)
             fgets(buffer, sizeof(buffer), fData);
             fgets(buffer, sizeof(buffer), fData);
+
+            // Skip the likes and liked lines
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
+
             skip = 0;
         }
     }
@@ -651,6 +779,10 @@ void editPost(char postId[]) {
             time_t t = time(NULL);
             struct tm tm = *localtime(&t);
             fprintf(tempFile, "Date: %04d-%02d-%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+
+            // Skip the likes and liked lines
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
 
 
             fputs(buffer, tempFile);
@@ -742,7 +874,7 @@ void addPost() {
 
     // Create the new post entry
     char newPostEntry[512];
-    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\n\n", newPostId, newContent, date);
+    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\nLikes: 0\nLiked: 0\n", newPostId, newContent, date);
 
     // Insert the new post entry
     char updatedContent[20000];
