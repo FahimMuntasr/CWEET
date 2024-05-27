@@ -81,6 +81,7 @@ void editPost(char postId[]);
 // UI functions
 void setColor(int color, int background);
 void resetColor();
+void loadingAnim();
 
 
 void explorePage();
@@ -107,10 +108,12 @@ void menu() {
     scanf(" %c", &input);
     resetColor();
     if (input == 'P' || input == 'p') {
+        loadingAnim();
         profilePage();
     } else if (input == 'q' || input == 'Q') {
         exit(0); // Exit the program
     } else if (input == 'E' || input == 'e') {
+        loadingAnim();
         explorePage();
     } else {
         showError("Invalid Input");
@@ -128,10 +131,12 @@ void authenticate() {
     resetColor();
     scanf(" %c", &input);
     if(input == 'L'|| input == 'l'){
+        loadingAnim();
         signIn();
     }else if(input == 'e'||input == 'E'){
-        return; //exit
+        exit(0);
     }else if(input == 'C'|| input == 'c'){
+        loadingAnim();
         signUp();
     }else{
         showError("Invalid Input");
@@ -237,7 +242,7 @@ void signUp() {
     fprintf(fData, "\nEmail: %s", user.email); // Add email
     fprintf(fData, "\nPassword: %s", user.hashedPassword); // Add hashed password
     fclose(fData);
-
+    loadingAnim();
     authenticate(); // Call authenticate function
 }
 
@@ -314,6 +319,7 @@ void signIn() {
                         sscanf(buffer, "Password: %49s", extractedPassword);
                         if (strcmp(extractedPassword, user.hashedPassword) == 0) {
                             fclose(fData);
+                            loadingAnim();
                             menu();
                             return; // Exit the function after successful login
                         } else {
@@ -945,4 +951,23 @@ void setColor(int color, int background) {
 
 void resetColor() {
     printf("\033[0m");
+}
+void loadingAnim() {
+    int duration;
+    char loading_texts[][15] = {"\\Loading", "|Loading.", "/Loading..", "-Loading..."};
+    int n = sizeof(loading_texts) / sizeof(loading_texts[0]);
+
+    // Calculate the duration
+    duration = 2;// this is in seconds, change it to anything you want
+    time_t end_time = time(NULL) + duration;
+    
+    while (time(NULL) < end_time) {
+        for (int i = 0; i < n; i++) {
+			system("cls");
+            setColor(CYAN,BLACK);
+            printf("%s\n", loading_texts[i]);
+            resetColor();
+            _sleep(100);//pause for 500 milliseconds, 0.5 seconds
+        }
+    }
 }
