@@ -1,56 +1,27 @@
 
+
 User: Mosabbir
 Email: kmosabbir@gmail.com
 Password: 2234110625
-
-
-
-
-PostID: Mosabbir_2
-Content: Gotta catch;em allll!
-Date: 2024-05-26
-Likes: 0
-Liked: 0
-PostID: Mosabbir_3
-Content: Its so trueeee
-Date: 2024-05-26
-Likes: 0
-Liked: 0
-
-
-PostID: Mosabbir_4
-Content: I wanna be the very best that no one ever was! TO CATCH them is my real test, to train them is my cause!
+PostID: Mosabbir_1
+Content: My name is Mosabbir. Creating this Cweeter feels awesome. I can't wait to show it to everyone. 
 Date: 2024-05-28
-Likes: 0
-Liked: 0
+Likes: 1
+Liked: Fahim
 
-PostID: Mosabbir_5
-Content: lol
-Date: 2024-05-28
-Likes: 0
-Liked: 0
-User: fahim
-Email: fam@a.com
+User: Fahim
+Email: fam@homie.com
 Password: 2234110625
-
-PostID: fahim_1
-Content: fam is fahgimsf
-Date: 2024-05-26
-Likes: 0
-Liked: 0
-
-
-PostID: fahim_2
-Content: New posty roasty!
+PostID: Fahim_1
+Content: My post is the best yo!!
 Date: 2024-05-28
-Likes: 0
-Liked: 0
+Likes: 1
+Liked: Mosabbir
 
-PostID: fahim_3
-Content: I am the hero of Arkansawa(don k if its correct lol!)
+
+PostID: Fahim_2
+Content: Totally best and there is no doubt, innit!
 Date: 2024-05-28
-Likes: 0
-Liked: 0
-User: FahimMuntasir
-Email: byefahimmuntasir@gmail.com
-Password: 3781221010
+Likes: 1
+Liked: Mosabbir
+

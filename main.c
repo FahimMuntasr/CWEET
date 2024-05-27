@@ -28,6 +28,7 @@ char upperCase[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 char numbers[] = "1234567890";
 char specialChars[] = "!@#$%%^&*()-_+={}[]|\\`~<>,.?/:;";
 
+
 int postCount = 0;
 
 
@@ -41,7 +42,7 @@ struct userInfo{
 
 struct Likes{
     int likeCount;
-    int toggle;
+    char likedBy[100][100];
 };
 
 struct Post{
@@ -87,6 +88,7 @@ void loadingAnim();
 // Search user
 void searchUser(char[]);
 int getPostCount(char[]);
+int getAllPostCount();
 
 void explorePage();
 void displayUserPosts(int page ,char[]);
@@ -415,7 +417,7 @@ int getPostCount(char username[]) {
     char searchString[100];
     snprintf(searchString, sizeof(searchString), "User: %s\n", username);
 
-    fData = fopen(data, "r"); 
+    fData = fopen(data, "r");
     if (fData == NULL) {
         showError("Could not open data file");
         return 0;
@@ -443,77 +445,104 @@ int getPostCount(char username[]) {
     return postCount;
 }
 
+int getAllPostCount()
+{
+    char buffer[256];
+    fData = fopen(data, "r");
 
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return 0;
+    }
+
+    int postCount = 0;
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, "PostID: ") == buffer) {
+            postCount++;
+        }
+    }
+
+    fclose(fData);
+    return postCount;
+}
 
 void explorePage()
 {
+    
     loadPosts();
 
     displayPosts(1);
 }
 
 void loadPosts(){
-
     char buffer[256];
 
     fData = fopen(data, "r");
 
-     if (fData == NULL) {
+    if (fData == NULL) {
         showError("Could not open data file");
         return;
     }
+    int numOfPost = 0;
 
     while(fgets(buffer, sizeof(buffer), fData) != NULL){
         if(strstr(buffer, "PostID: ") == buffer){
-            sscanf(buffer, "PostID: %63[^\n]", posts[postCount].postId);
+            sscanf(buffer, "PostID: %63[^\n]", posts[numOfPost].postId);
             fgets(buffer, sizeof(buffer), fData); // Read Content line
-            sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
+            sscanf(buffer, "Content: %255[^\n]", posts[numOfPost].content);
             fgets(buffer, sizeof(buffer), fData); // Read Date line
-            sscanf(buffer, "Date: %31[^\n]", posts[postCount].date);
+            sscanf(buffer, "Date: %31[^\n]", posts[numOfPost].date);
 
             // Read the likes count
             fgets(buffer, sizeof(buffer), fData);
-            sscanf(buffer, "Likes: %d\n", &posts[postCount].likes.likeCount);
+            sscanf(buffer, "Likes: %d\n", &posts[numOfPost].likes.likeCount);
 
-            // Read the toggle value
-            fgets(buffer, sizeof(buffer), fData);
-            sscanf(buffer, "Liked: %d\n", &posts[postCount].likes.toggle);
+            // Initialize the likedBy array
+            for (int i = 0; i < posts[numOfPost].likes.likeCount; i++) {
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "Liked: %s\n", posts[numOfPost].likes.likedBy[i]);
+            }
 
-
-            postCount++;
+            numOfPost++;
         }
     }
     fclose(fData);
 }
 
 // Displays the post in explore page with pagination
-
 void displayPosts(int page) {
     system("cls");
+    int numOfPost = getAllPostCount();
     int start = (page - 1) * POSTS_PER_PAGE;
     int end = start + POSTS_PER_PAGE;
-    if (start >= postCount) {
+    if (start >= numOfPost) {
         showError("No more posts to display.");
         explorePage();
         return;
     }
-    if (end > postCount) end = postCount;
+    if (end > numOfPost) end = numOfPost;
 
     for (int i = start; i < end; i++) {
-        setColor(CYAN,BLACK);
+        setColor(CYAN, BLACK);
         printf("PostID: %s\n", posts[i].postId);
         resetColor();
-        setColor(BLACK,CYAN);
+        setColor(BLACK, CYAN);
         printf("Content: %s\n", posts[i].content);
         resetColor();
-        setColor(CYAN,BLACK);
+        setColor(CYAN, BLACK);
         printf("Date: %s\n\n", posts[i].date);
         printf("Likes: %d\n", posts[i].likes.likeCount);
+
+        // Print the likedBy list
+        for (int j = 0; j < posts[i].likes.likeCount; j++) {
+            printf("Liked: %s\n", posts[i].likes.likedBy[j]);
+        }
+
         printf("[L]ike\n");
         printf("=====================================\n\n");
         resetColor();
     }
-    setColor(CYAN,BLACK);
+    setColor(CYAN, BLACK);
     printf("< [P]revious | [N]ext >\n");
     printf("[Q]uit\n");
     resetColor();
@@ -528,7 +557,7 @@ void displayPosts(int page) {
             displayPosts(page);
         }
     } else if (input == 'N' || input == 'n') {
-        if (end < postCount) {
+        if (end < numOfPost) {
             displayPosts(page + 1);
         } else {
             showError("No next page.");
@@ -537,7 +566,7 @@ void displayPosts(int page) {
     } else if (input == 'Q' || input == 'q') {
         menu();
     } else if(input == 'L' || input == 'l'){
-        setColor(CYAN,BLACK);
+        setColor(CYAN, BLACK);
         printf("Enter PostID to like: ");
         resetColor();
         char postId[64];
@@ -656,7 +685,7 @@ void displayUserPosts(int page, char username[32]) {
         }
     } else {
         int num = getPostCount(username);
-        
+
         if (num == 0) {
             setColor(CYAN, BLACK);
             printf("No posts available.\n");
@@ -772,9 +801,16 @@ void loadUserPosts(char username[32]) {
                     fgets(buffer, sizeof(buffer), fData);
                     sscanf(buffer, "Likes: %d\n", &posts[postCount].likes.likeCount);
 
-                    // Read the toggle value
-                    fgets(buffer, sizeof(buffer), fData);
-                    sscanf(buffer, "Liked: %d\n", &posts[postCount].likes.toggle);
+                    // Read likedBy list
+
+                    for (int i = 0; i < posts[postCount].likes.likeCount; i++) {
+                        fgets(buffer, sizeof(buffer), fData);
+                        sscanf(buffer, "Liked: %s\n", posts[postCount].likes.likedBy[i]);
+                    }
+
+
+
+
                     postCount++;
                 }
                 // Stop reading if another user is encountered
@@ -805,9 +841,12 @@ void loadUserPosts(char username[32]) {
                         fgets(buffer, sizeof(buffer), fData);
                         sscanf(buffer, "Likes: %d\n", &posts[num].likes.likeCount);
 
-                        // Read the toggle value
-                        fgets(buffer, sizeof(buffer), fData);
-                        sscanf(buffer, "Liked: %d\n", &posts[num].likes.toggle);
+                        // read likedBy list
+                        for (int i = 0; i < posts[num].likes.likeCount; i++) {
+                            fgets(buffer, sizeof(buffer), fData);
+                            sscanf(buffer, "Liked: %s\n", posts[num].likes.likedBy[i]);
+                        }
+
                         num++;
                     }
                     // Stop reading if another user is encountered
@@ -874,7 +913,7 @@ void searchUser(char searchName[32]) {
     fflush(stdin);
     scanf("%31s", exactName);
     exactName[strcspn(exactName, "\n")] = 0; // remove newline character
-    
+
 
     for (int i = 0; i < matchCount; i++) {
         // For case-insensitive comparison, use strcasecmp or _stricmp (Windows-specific)
@@ -890,9 +929,6 @@ void searchUser(char searchName[32]) {
 }
 
 
-
-
-//! TODO : Implement the likedBy
 void likePost(char postId[]) {
     FILE *tempFile;
     char buffer[256];
@@ -920,37 +956,68 @@ void likePost(char postId[]) {
             if (strcmp(extractedPostId, postId) == 0) {
                 foundPost = 1;
 
-
+                // Skip the content and date lines
                 for (int i = 0; i < 2; i++) {
                     fgets(buffer, sizeof(buffer), fData);
                     fputs(buffer, tempFile);
                 }
 
                 // Read the likes count
-                int likesCount;
+                int likes;
                 fgets(buffer, sizeof(buffer), fData);
-                sscanf(buffer, "Likes: %d", &likesCount);
+                sscanf(buffer, "Likes: %d\n", &likes);
 
-                // Read the toggle value
-                int toggle;
-                fgets(buffer, sizeof(buffer), fData);
-                sscanf(buffer, "Liked: %d", &toggle);
-
-                // Toggle the like status and update the likes count
-                if (toggle == 0) {
-                    toggle = 1;
-                    likesCount++;
-                } else {
-                    toggle = 0;
-                    likesCount--;
+                // Read the likedBy list
+                char likedBy[100][100];
+                for (int i = 0; i < likes; i++) {
+                    fgets(buffer, sizeof(buffer), fData);
+                    sscanf(buffer, "Liked: %s\n", likedBy[i]);
                 }
 
-                // Write the updated likes and toggle values
-                fprintf(tempFile, "Likes: %d\n", likesCount);
-                fprintf(tempFile, "Liked: %d\n", toggle);
+                // Check if the user has already liked the post
+                int liked = 0;
+                for (int i = 0; i < likes; i++) {
+                    if (strcmp(likedBy[i], user.name) == 0) {
+                        liked = 1;
+                        break;
+                    }
+                }
+
+                if (liked) {
+                    fprintf(tempFile, "Likes: %d\n", likes - 1);
+
+                    // Write back all users who liked the post except the current user
+                    for (int i = 0; i < likes; i++) {
+                        if (strcmp(likedBy[i], user.name) != 0) {
+                            fprintf(tempFile, "Liked: %s\n", likedBy[i]);
+                        }
+                    }
+                } else {
+                    fprintf(tempFile, "Likes: %d\n", likes + 1);
+
+                    // Write back all users who liked the post
+                    for (int i = 0; i < likes; i++) {
+                        fprintf(tempFile, "Liked: %s\n", likedBy[i]);
+                    }
+
+                    // Add the current user to the likedBy list
+                    fprintf(tempFile, "Liked: %s\n", user.name);
+
+                    setColor(GREEN, BLACK);
+                    printf("Post liked successfully.\n");
+                    resetColor();
+                }  
 
                 // Continue reading and writing the rest of the file
-                continue;
+                while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                    fputs(buffer, tempFile);
+                }
+
+                fclose(fData);
+                fclose(tempFile);
+                remove(data);
+                rename("temp.txt", data);
+                return;
             }
         }
     }
@@ -958,13 +1025,13 @@ void likePost(char postId[]) {
     fclose(fData);
     fclose(tempFile);
 
-    remove(data);
-    rename("temp.txt", data);
+    remove("temp.txt");
 
     if (!foundPost) {
         showError("Post not found.");
     }
 }
+
 
 void deletePost(char postId[]) {
     FILE *tempFile;
@@ -1142,7 +1209,7 @@ void addPost() {
 
     // Create the new post entry
     char newPostEntry[512];
-    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\nLikes: 0\nLiked: 0\n", newPostId, newContent, date);
+    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\nLikes: 0\n", newPostId, newContent, date);
 
     // Insert the new post entry
     char updatedContent[20000];
