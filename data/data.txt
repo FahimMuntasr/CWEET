@@ -1,7 +1,7 @@
 
 
 User: Mosabbir
-Email: kmosabbir@gmail.com
+Email: mosa@gmail.com
 Password: 2234110625
 PostID: Mosabbir_1
 Content: My name is Mosabbir. Creating this Cweeter feels awesome. I can't wait to show it to everyone. 
