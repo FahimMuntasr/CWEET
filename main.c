@@ -72,8 +72,8 @@ void menu();
 void loadPosts();
 void displayPosts(int);
 void addPost();
-void loadUserPosts();
-void profilePage();
+void loadUserPosts(char []);
+void profilePage(char[]);
 void deletePost(char postId[]);
 void editPost(char postId[]);
 
@@ -84,8 +84,12 @@ void resetColor();
 void loadingAnim();
 
 
+// Search user
+void searchUser(char[]);
+int getPostCount(char[]);
+
 void explorePage();
-void displayUserPosts(int page);
+void displayUserPosts(int page ,char[]);
 
 void likePost(char postId[]);
 
@@ -104,17 +108,24 @@ void menu() {
 
     char input;
     setColor(CYAN, BLACK);
-    printf("[P]rofile\n[E]xplore Page\n[Q]uit\n");
+    printf("[P]rofile\n[E]xplore Page\n[S]earch\n[Q]uit\n");
     scanf(" %c", &input);
     resetColor();
     if (input == 'P' || input == 'p') {
         loadingAnim();
-        profilePage();
+        profilePage( user.name);
     } else if (input == 'q' || input == 'Q') {
         exit(0); // Exit the program
     } else if (input == 'E' || input == 'e') {
         loadingAnim();
         explorePage();
+    } else if(input == 'S' || input == 's') {
+        char searchName[100];
+        setColor(CYAN, BLACK);
+        printf("Enter username to search: ");
+        resetColor();
+        scanf("%99s", searchName);
+        searchUser(searchName);
     } else {
         showError("Invalid Input");
         menu();
@@ -398,14 +409,48 @@ void hash_password(const char str[], char hashed_pass[]) {
     sprintf(hashed_pass, "%u", hash);
 }
 
+int getPostCount(char username[]) {
 
-void explorePage() {
+    char buffer[256];
+    char searchString[100];
+    snprintf(searchString, sizeof(searchString), "User: %s\n", username);
+
+    fData = fopen(data, "r"); 
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return 0;
+    }
+
+    int postCount = 0;
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strcmp(buffer, searchString) == 0) {
+            // Skip the email and password lines
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
+
+            // Read posts for the user
+            while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                if (strstr(buffer, "PostID: ") == buffer) {
+                    postCount++;
+                }
+                // Stop reading if another user is encountered
+                if (strstr(buffer, "User: ") == buffer) break;
+            }
+        }
+    }
+
+    fclose(fData);
+    return postCount;
+}
+
+
+
+void explorePage()
+{
     loadPosts();
 
     displayPosts(1);
 }
-
-
 
 void loadPosts(){
 
@@ -441,6 +486,7 @@ void loadPosts(){
     fclose(fData);
 }
 
+// Displays the post in explore page with pagination
 
 void displayPosts(int page) {
     system("cls");
@@ -507,19 +553,205 @@ void displayPosts(int page) {
 
 
 
-void loadUserPosts() {
+void displayUserPosts(int page, char username[32]) {
+    system("cls");
+    if(strcmp(username, user.name) == 0) {
+        if (postCount == 0) {
+            setColor(CYAN, BLACK);
+            printf("No posts available.\n");
+            printf("[A]dd Post\n");
+            printf("[Q]uit to Menu\n");
+            resetColor();
+            char input;
+            scanf(" %c", &input);
+            if (input == 'A' || input == 'a') {
+                addPost();
+                displayUserPosts(1, username); // Go back to the first page to see the new post
+            } else if (input == 'Q' || input == 'q') {
+                menu();
+            } else {
+                showError("Invalid Input");
+                displayUserPosts(page, username);
+            }
+            return;
+        }
+
+        int start = (page - 1) * POSTS_PER_PAGE;
+        int end = start + POSTS_PER_PAGE;
+        if (start >= postCount) {
+            showError("No more posts to display.");
+            return;
+        }
+        if (end > postCount) end = postCount;
+
+        for (int i = start; i < end; i++) {
+            int index = postCount - 1 - i;
+            if (index < 0) break;
+            setColor(CYAN, BLACK);
+            printf("PostID: %s\n", posts[index].postId);
+            resetColor();
+            setColor(BLACK, CYAN);
+            printf("Content: %s\n", posts[index].content);
+            resetColor();
+            setColor(CYAN, BLACK);
+            printf("Date: %s\n", posts[index].date);
+            printf("Likes: %d\n", posts[index].likes.likeCount);
+
+            printf("====================================\n\n");
+            printf("\t[L]ike [D]elete   [E]dit\n\n");
+            printf("====================================\n\n");
+            resetColor();
+        }
+        setColor(CYAN, BLACK);
+        printf("< [P]revious | [N]ext >\n");
+        printf("[A]dd Post\n");
+        printf("[Q]uit to Menu\n");
+        resetColor();
+        char input;
+        char postId[64];
+        scanf(" %c", &input);
+        if (input == 'P' || input == 'p') {
+            if (page > 1) {
+                displayUserPosts(page - 1, username);
+            } else {
+                showError("No previous page.");
+                displayUserPosts(page, username);
+            }
+        } else if (input == 'N' || input == 'n') {
+            if (end < postCount) {
+                displayUserPosts(page + 1, username);
+            } else {
+                showError("No next page.");
+                displayUserPosts(page, username);
+            }
+        } else if (input == 'A' || input == 'a') {
+            addPost();
+            displayUserPosts(1, username); // Go back to the first page to see the new post
+        } else if (input == 'Q' || input == 'q') {
+            menu();
+        } else if (input == 'D' || input == 'd') {
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to delete: ");
+            resetColor();
+            scanf("%63s", postId);
+            deletePost(postId);
+            displayUserPosts(page, username);
+        } else if (input == 'E' || input == 'e') {
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to edit: ");
+            resetColor();
+            scanf("%63s", postId);
+            editPost(postId);
+            displayUserPosts(page, username);
+        } else if (input == 'L' || input == 'l') {
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to like: ");
+            resetColor();
+            scanf("%63s", postId);
+            likePost(postId);
+            profilePage(username);
+        } else {
+            showError("Invalid Input");
+            displayUserPosts(page, username);
+        }
+    } else {
+        int num = getPostCount(username);
+        
+        if (num == 0) {
+            setColor(CYAN, BLACK);
+            printf("No posts available.\n");
+            printf("[Q]uit to Menu\n");
+            resetColor();
+            char input;
+            scanf(" %c", &input);
+            if (input == 'Q' || input == 'q') {
+                menu();
+            } else {
+                showError("Invalid Input");
+                displayUserPosts(page, username);
+            }
+            return;
+        }
+
+        int start = (page - 1) * POSTS_PER_PAGE;
+        int end = start + POSTS_PER_PAGE;
+        if (start >= num) {
+            showError("No more posts to display.");
+            return;
+        }
+        if (end > num) end = num;
+
+        for (int i = start; i < end; i++) {
+            int index = num - 1 - i;
+            if (index < 0) break;
+            setColor(CYAN, BLACK);
+            printf("PostID: %s\n", posts[index].postId);
+            resetColor();
+            setColor(BLACK, CYAN);
+            printf("Content: %s\n", posts[index].content);
+            resetColor();
+            setColor(CYAN, BLACK);
+            printf("Date: %s\n", posts[index].date);
+            printf("Likes: %d\n", posts[index].likes.likeCount);
+
+            printf("====================================\n\n");
+            printf("\t[L]ike\n\n");
+            printf("====================================\n\n");
+            resetColor();
+        }
+        setColor(CYAN, BLACK);
+        printf("< [P]revious | [N]ext >\n");
+        printf("[Q]uit to Menu\n");
+        resetColor();
+        char input;
+        char postId[64];
+        scanf(" %c", &input);
+
+        if (input == 'P' || input == 'p') {
+            if (page > 1) {
+                displayUserPosts(page - 1, username);
+            } else {
+                showError("No previous page.");
+                displayUserPosts(page, username);
+            }
+        } else if (input == 'N' || input == 'n') {
+            if (end < num) {
+                displayUserPosts(page + 1, username);
+            } else {
+                showError("No next page.");
+                displayUserPosts(page, username);
+            }
+        } else if (input == 'Q' || input == 'q') {
+            menu();
+        } else if (input == 'L' || input == 'l') {
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to like: ");
+            resetColor();
+            char postId[64];
+            scanf("%63s", postId);
+            likePost(postId);
+            profilePage(username);
+        } else {
+            showError("Invalid Input");
+            displayUserPosts(page, username);
+        }
+    }
+}
+
+void loadUserPosts(char username[32]) {
     char buffer[256];
     char searchString[100];
-    snprintf(searchString, sizeof(searchString), "User: %s", user.name);
+    snprintf(searchString, sizeof(searchString), "User: %s", username);
 
-    fData = fopen(data, "r");
+    fData = fopen(data, "r"); // Assuming the file name is "data.txt"
 
     if (fData == NULL) {
         showError("Could not open data file");
         return;
     }
 
-    postCount = 0; // Reset post count
+    if(strcmp(username, user.name) == 0){
+        postCount = 0; // Reset post count
 
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, searchString) == buffer) {
@@ -551,126 +783,116 @@ void loadUserPosts() {
         }
     }
 
+    } else {
+        int num = 0; // Reset post count
+
+        while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+            if (strstr(buffer, searchString) == buffer) {
+                // Skip the email and password lines
+                fgets(buffer, sizeof(buffer), fData);
+                fgets(buffer, sizeof(buffer), fData);
+
+                // Read posts for the user
+                while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                    if (strstr(buffer, "PostID: ") == buffer) {
+                        sscanf(buffer, "PostID: %63[^\n]", posts[num].postId);
+                        fgets(buffer, sizeof(buffer), fData); // Read Content line
+                        sscanf(buffer, "Content: %255[^\n]", posts[num].content);
+                        fgets(buffer, sizeof(buffer), fData); // Read Date line
+                        sscanf(buffer, "Date: %31[^\n]", posts[num].date);
+
+                        // Read the likes count
+                        fgets(buffer, sizeof(buffer), fData);
+                        sscanf(buffer, "Likes: %d\n", &posts[num].likes.likeCount);
+
+                        // Read the toggle value
+                        fgets(buffer, sizeof(buffer), fData);
+                        sscanf(buffer, "Liked: %d\n", &posts[num].likes.toggle);
+                        num++;
+                    }
+                    // Stop reading if another user is encountered
+                    if (strstr(buffer, "User: ") == buffer) break;
+                }
+            }
+        }
+
+
+    }
+    fclose(fData);
+}
+
+void profilePage(char username[32]) {
+    system("cls");
+    setColor(CYAN, BLACK);
+
+    resetColor();
+
+    loadUserPosts(username);
+
+    displayUserPosts(1, username);
+}
+
+void searchUser(char searchName[32]) {
+    char buffer[256];
+    char searchString[100];
+    snprintf(searchString, sizeof(searchString), "%s", searchName);
+
+    fData = fopen(data, "r"); // Assuming the file name is "data.txt"
+    if (fData == NULL) {
+        showError("Could not open data file");
+        return;
+    }
+
+    int matchCount = 0;
+    char matchedUsers[100][100]; // Assuming a maximum of 100 users for simplicity
+
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        if (strstr(buffer, "User: ") == buffer) {
+            char username[100];
+            sscanf(buffer, "User: %s", username);
+            if (strstr(username, searchString) != NULL) {
+                setColor(CYAN, BLACK);
+                printf("User found: %s\n", username);
+                resetColor();
+                strcpy(matchedUsers[matchCount], username);
+                matchCount++;
+            }
+        }
+    }
+
+    if (matchCount == 0) {
+        showError("No matching users found");
+        fclose(fData);
+        menu();
+        return;
+    }
+
+    setColor(CYAN, BLACK);
+    printf("Enter the exact username to view profile: ");
+    resetColor();
+    char exactName[32];
+    fflush(stdin);
+    scanf("%31s", exactName);
+    exactName[strcspn(exactName, "\n")] = 0; // remove newline character
+    
+
+    for (int i = 0; i < matchCount; i++) {
+        // For case-insensitive comparison, use strcasecmp or _stricmp (Windows-specific)
+        if (strcmp(exactName, matchedUsers[i]) == 0) {
+            fclose(fData);
+            profilePage(exactName);
+            return;
+        }
+    }
+
+    showError("Exact username not found");
     fclose(fData);
 }
 
 
-void profilePage() {
-    system("cls");
-    setColor(CYAN,BLACK);
-    printf("Username: %s\n", user.name);
-    resetColor();
-
-    loadUserPosts();
 
 
-
-    displayUserPosts(1);
-}
-
-void displayUserPosts(int page) {
-    system("cls");
-    if (postCount == 0) {
-        setColor(CYAN,BLACK);
-        printf("No posts available.\n");
-        printf("[A]dd Post\n");
-        printf("[Q]uit to Menu\n");
-        resetColor();
-        char input;
-        scanf(" %c", &input);
-        if (input == 'A' || input == 'a') {
-            addPost();
-            displayUserPosts(1); // Go back to the first page to see the new post
-        } else if (input == 'Q' || input == 'q') {
-            menu();
-        } else {
-            showError("Invalid Input");
-            displayUserPosts(page);
-        }
-        return;
-    }
-
-    int start = (page - 1) * POSTS_PER_PAGE;
-    int end = start + POSTS_PER_PAGE;
-    if (start >= postCount) {
-        showError("No more posts to display.");
-        return;
-    }
-    if (end > postCount) end = postCount;
-
-    for (int i = start; i < end; i++) {
-        // Display in reverse order for recent posts at top
-        int index = postCount - 1 - i;
-        if (index < 0) break;
-        setColor(CYAN, BLACK);
-        printf("PostID: %s\n", posts[index].postId);
-        resetColor();
-        setColor(BLACK,CYAN);
-        printf("Content: %s\n", posts[index].content);
-        resetColor();
-        setColor(CYAN,BLACK);
-        printf("Date: %s\n", posts[index].date);
-        printf("Likes: %d\n", posts[index].likes.likeCount);
-
-        printf("====================================\n\n");
-        printf("\t[L]ike [D]elete   [E]dit\n\n");
-        printf("====================================\n\n");
-        resetColor();
-    }
-    setColor(CYAN,BLACK);
-    printf("< [P]revious | [N]ext >\n");
-    printf("[A]dd Post\n");
-    printf("[Q]uit to Menu\n");
-    resetColor();
-    char input;
-    char postId[64];
-    scanf(" %c", &input);
-    if (input == 'P' || input == 'p') {
-        if (page > 1) {
-            displayUserPosts(page - 1);
-        } else {
-            showError("No previous page.");
-            displayUserPosts(page);
-        }
-    } else if (input == 'N' || input == 'n') {
-        if (end < postCount) {
-            displayUserPosts(page + 1);
-        } else {
-            showError("No next page.");
-            displayUserPosts(page);
-        }
-    } else if (input == 'A' || input == 'a') {
-        addPost();
-        displayUserPosts(1); // Go back to the first page to see the new post
-    } else if (input == 'Q' || input == 'q') {
-        menu();
-    } else if (input == 'D' || input == 'd') {
-        setColor(CYAN,BLACK);
-        printf("Enter PostID to delete: ");
-        resetColor();
-        scanf("%63s", postId);
-        deletePost(postId);
-        displayUserPosts(page);
-    } else if (input == 'E' || input == 'e') {
-        setColor(CYAN,BLACK);
-        printf("Enter PostID to edit: ");
-        resetColor();
-        scanf("%63s", postId);
-        editPost(postId);
-        displayUserPosts(page);
-    } else if(input == 'L' || input == 'l'){
-        setColor(CYAN,BLACK);
-        printf("Enter PostID to like: ");
-        resetColor();
-        scanf("%63s", postId);
-        likePost(postId);
-        profilePage();
-    } else {
-        showError("Invalid Input");
-        displayUserPosts(page);
-    }
-}
-
+//! TODO : Implement the likedBy
 void likePost(char postId[]) {
     FILE *tempFile;
     char buffer[256];
@@ -785,7 +1007,7 @@ void deletePost(char postId[]) {
     setColor(GREEN,BLACK);
     printf("Post deleted successfully.");
     resetColor();
-    profilePage();
+    profilePage( user.name);
     return;
 }
 
@@ -843,7 +1065,7 @@ void editPost(char postId[]) {
     rename("temp.txt", data);
 
     if (editing) {
-        profilePage();
+        profilePage(user.name);
         return;
         showError("Post edited successfully.");
     } else {
@@ -940,7 +1162,7 @@ void addPost() {
 
     // Refresh post count and load posts again
     postCount++;
-    loadUserPosts();
+    loadUserPosts(user.name);
     setColor(GREEN,BLACK);
     printf("Post added successfully.\n");
     resetColor();
@@ -960,7 +1182,7 @@ void loadingAnim() {
     // Calculate the duration
     duration = 2;// this is in seconds, change it to anything you want
     time_t end_time = time(NULL) + duration;
-    
+
     while (time(NULL) < end_time) {
         for (int i = 0; i < n; i++) {
 			system("cls");
