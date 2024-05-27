@@ -7,6 +7,15 @@
 #define MAX_POSTS 1000
 #define POSTS_PER_PAGE 5
 
+#define BLACK 0
+#define RED 1
+#define GREEN 2
+#define YELLOW 3
+#define BLUE 4
+#define PURPLE 5
+#define CYAN 6
+#define WHITE 7
+
 // fData: Contains all the users along with their posts
 FILE *fData;
 
@@ -69,8 +78,9 @@ void deletePost(char postId[]);
 void editPost(char postId[]);
 
 
-
-
+// UI functions
+void setColor(int color, int background);
+void resetColor();
 
 
 void explorePage();
@@ -92,9 +102,10 @@ void menu() {
     system("cls");
 
     char input;
-
+    setColor(CYAN, BLACK);
     printf("[P]rofile\n[E]xplore Page\n[Q]uit\n");
     scanf(" %c", &input);
+    resetColor();
     if (input == 'P' || input == 'p') {
         profilePage();
     } else if (input == 'q' || input == 'Q') {
@@ -108,39 +119,47 @@ void menu() {
 }
 
 
-void authenticate(){
+void authenticate() {
     system("cls");
 
     char input;
+    setColor(CYAN, BLACK);
     printf("[L]og In\n[C]reate Account\n[E]xit\n");
-    scanf("%c", &input);
+    resetColor();
+    scanf(" %c", &input);
     if(input == 'L'|| input == 'l'){
         signIn();
     }else if(input == 'e'||input == 'E'){
-        return;//exit
+        return; //exit
     }else if(input == 'C'|| input == 'c'){
         signUp();
     }else{
         showError("Invalid Input");
-        authenticate();//recursively call the main function until the user inputs a valid character
+        authenticate(); //recursively call the main function until the user inputs a valid character
     }
-
-
 }
 
 void showError(char error[]){
+    setColor(RED, BLACK);
     printf("\n%s\n", error);
-    system("pause");//this command pauses the program until user presses any key
+    system("pause"); //this command pauses the program until user presses any key
+    resetColor();
 }
+
+
 void signUp() {
     system("cls");
     char extractedUsername[50], extractedEmail[50];
     int i;
 
     char buffer[256];  // Increase buffer size
+    setColor(GREEN, BLACK);
     printf("Username: ");
+    resetColor();
     scanf("%31s", user.name); // limit input size to 32 chars
+    setColor(GREEN, BLACK);
     printf("Email: ");
+    resetColor();
     scanf("%31s", user.email);
 
     // Check for invalid characters in username
@@ -226,7 +245,9 @@ void takePass(){
     system("cls");
     int i;
     int upper = 0, lower = 0, number = 0, special = 0;// these 4 variables will be used as flags to validate the password later on
+    setColor(GREEN,BLACK);
     printf("Enter password: ");//must be at least 8 chars long and less than 33 chars and must contain lowercase,uppercase,numbers and a special symbol
+    resetColor();
     takeHiddenInput(user.password);
     //scanf("%31s", password);
     for(i=0;user.password[i]!='\0';i++){
@@ -262,8 +283,9 @@ void signIn() {
     char extractedPassword[50];
     char buffer[256];
     int usernameFound = 0;
-
+    setColor(PURPLE, BLACK);
     printf("Enter username: ");
+    resetColor();
     scanf("%49s", user.name);
 
     fData = fopen(data, "r");
@@ -280,7 +302,9 @@ void signIn() {
                 usernameFound = 1;
 
                 // Username found, prompt for password
+                setColor(PURPLE, BLACK);
                 printf("Enter password: ");
+                resetColor();
                 takeHiddenInput(user.password);
                 hash_password(user.password, user.hashedPassword);
 
@@ -390,7 +414,7 @@ void loadPosts(){
 
     while(fgets(buffer, sizeof(buffer), fData) != NULL){
         if(strstr(buffer, "PostID: ") == buffer){
-             sscanf(buffer, "PostID: %63[^\n]", posts[postCount].postId);
+            sscanf(buffer, "PostID: %63[^\n]", posts[postCount].postId);
             fgets(buffer, sizeof(buffer), fData); // Read Content line
             sscanf(buffer, "Content: %255[^\n]", posts[postCount].content);
             fgets(buffer, sizeof(buffer), fData); // Read Date line
@@ -409,9 +433,6 @@ void loadPosts(){
         }
     }
     fclose(fData);
-
-
-
 }
 
 
@@ -427,17 +448,23 @@ void displayPosts(int page) {
     if (end > postCount) end = postCount;
 
     for (int i = start; i < end; i++) {
+        setColor(CYAN,BLACK);
         printf("PostID: %s\n", posts[i].postId);
+        resetColor();
+        setColor(BLACK,CYAN);
         printf("Content: %s\n", posts[i].content);
+        resetColor();
+        setColor(CYAN,BLACK);
         printf("Date: %s\n\n", posts[i].date);
         printf("Likes: %d\n", posts[i].likes.likeCount);
         printf("[L]ike\n");
         printf("=====================================\n\n");
-
+        resetColor();
     }
-
+    setColor(CYAN,BLACK);
     printf("< [P]revious | [N]ext >\n");
     printf("[Q]uit\n");
+    resetColor();
 
     char input;
     scanf(" %c", &input);
@@ -458,7 +485,9 @@ void displayPosts(int page) {
     } else if (input == 'Q' || input == 'q') {
         menu();
     } else if(input == 'L' || input == 'l'){
+        setColor(CYAN,BLACK);
         printf("Enter PostID to like: ");
+        resetColor();
         char postId[64];
         scanf("%63s", postId);
         likePost(postId);
@@ -522,8 +551,9 @@ void loadUserPosts() {
 
 void profilePage() {
     system("cls");
+    setColor(CYAN,BLACK);
     printf("Username: %s\n", user.name);
-
+    resetColor();
 
     loadUserPosts();
 
@@ -535,10 +565,11 @@ void profilePage() {
 void displayUserPosts(int page) {
     system("cls");
     if (postCount == 0) {
+        setColor(CYAN,BLACK);
         printf("No posts available.\n");
         printf("[A]dd Post\n");
         printf("[Q]uit to Menu\n");
-
+        resetColor();
         char input;
         scanf(" %c", &input);
         if (input == 'A' || input == 'a') {
@@ -565,21 +596,26 @@ void displayUserPosts(int page) {
         // Display in reverse order for recent posts at top
         int index = postCount - 1 - i;
         if (index < 0) break;
-
+        setColor(CYAN, BLACK);
         printf("PostID: %s\n", posts[index].postId);
+        resetColor();
+        setColor(BLACK,CYAN);
         printf("Content: %s\n", posts[index].content);
+        resetColor();
+        setColor(CYAN,BLACK);
         printf("Date: %s\n", posts[index].date);
         printf("Likes: %d\n", posts[index].likes.likeCount);
 
         printf("====================================\n\n");
         printf("\t[L]ike [D]elete   [E]dit\n\n");
         printf("====================================\n\n");
+        resetColor();
     }
-
+    setColor(CYAN,BLACK);
     printf("< [P]revious | [N]ext >\n");
     printf("[A]dd Post\n");
     printf("[Q]uit to Menu\n");
-
+    resetColor();
     char input;
     char postId[64];
     scanf(" %c", &input);
@@ -603,22 +639,26 @@ void displayUserPosts(int page) {
     } else if (input == 'Q' || input == 'q') {
         menu();
     } else if (input == 'D' || input == 'd') {
+        setColor(CYAN,BLACK);
         printf("Enter PostID to delete: ");
+        resetColor();
         scanf("%63s", postId);
         deletePost(postId);
         displayUserPosts(page);
     } else if (input == 'E' || input == 'e') {
+        setColor(CYAN,BLACK);
         printf("Enter PostID to edit: ");
+        resetColor();
         scanf("%63s", postId);
         editPost(postId);
         displayUserPosts(page);
     } else if(input == 'L' || input == 'l'){
+        setColor(CYAN,BLACK);
         printf("Enter PostID to like: ");
+        resetColor();
         scanf("%63s", postId);
         likePost(postId);
         profilePage();
-
-
     } else {
         showError("Invalid Input");
         displayUserPosts(page);
@@ -652,7 +692,7 @@ void likePost(char postId[]) {
             if (strcmp(extractedPostId, postId) == 0) {
                 foundPost = 1;
 
-                
+
                 for (int i = 0; i < 2; i++) {
                     fgets(buffer, sizeof(buffer), fData);
                     fputs(buffer, tempFile);
@@ -736,8 +776,9 @@ void deletePost(char postId[]) {
     fclose(tempFile);
     remove(data);
     rename("temp.txt", data);
-
+    setColor(GREEN,BLACK);
     printf("Post deleted successfully.");
+    resetColor();
     profilePage();
     return;
 }
@@ -764,7 +805,9 @@ void editPost(char postId[]) {
         if (strstr(buffer, searchString) == buffer) {
             fputs(buffer, tempFile);
             fgets(buffer, sizeof(buffer), fData);
+            setColor(CYAN,BLACK);
             printf("Enter new content: ");
+            resetColor();
             getchar(); // consume newline left by previous input
             fgets(newContent, sizeof(newContent), stdin);
             newContent[strcspn(newContent, "\n")] = 0; // remove newline character
@@ -811,8 +854,9 @@ void addPost() {
     char date[32];
 
     snprintf(date, sizeof(date), "%d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-
+    setColor(CYAN,BLACK);
     printf("Enter post content: ");
+    resetColor();
     getchar(); // consume newline left by previous input
     fgets(newContent, sizeof(newContent), stdin);
     newContent[strcspn(newContent, "\n")] = 0; // remove newline character
@@ -891,7 +935,14 @@ void addPost() {
     // Refresh post count and load posts again
     postCount++;
     loadUserPosts();
-
+    setColor(GREEN,BLACK);
     printf("Post added successfully.\n");
+    resetColor();
+}
+void setColor(int color, int background) {
+    printf("\033[%d;%dm", background + 40, color + 30);
 }
 
+void resetColor() {
+    printf("\033[0m");
+}
