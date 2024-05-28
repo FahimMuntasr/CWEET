@@ -1003,9 +1003,7 @@ void likePost(char postId[]) {
                     // Add the current user to the likedBy list
                     fprintf(tempFile, "Liked: %s\n", user.name);
 
-                    setColor(GREEN, BLACK);
-                    printf("Post liked successfully.\n");
-                    resetColor();
+                    
                 }  
 
                 // Continue reading and writing the rest of the file
@@ -1047,35 +1045,40 @@ void deletePost(char postId[]) {
         return;
     }
 
-    int skip = 0;
+    int foundPost = 0;
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, searchString) == buffer) {
-            skip = 1;
-        }
-        if (!skip) {
-            fputs(buffer, tempFile);
-        } else {
+            foundPost = 1;
             // Skip next two lines (Content and Date)
-            fgets(buffer, sizeof(buffer), fData);
-            fgets(buffer, sizeof(buffer), fData);
-
+            fgets(buffer, sizeof(buffer), fData); // Content
+            fgets(buffer, sizeof(buffer), fData); // Date
             // Skip the likes and liked lines
-            fgets(buffer, sizeof(buffer), fData);
-            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData); // Likes
+            
+            int likesCount;
 
-            skip = 0;
+            sscanf(buffer, "Likes: %d\n", &likesCount);
+            for (int i = 0; i < likesCount; i++) {
+                fgets(buffer, sizeof(buffer), fData);
+            }
+            continue; // Skip writing this post to temp file
         }
+        fputs(buffer, tempFile);
     }
 
     fclose(fData);
     fclose(tempFile);
     remove(data);
     rename("temp.txt", data);
-    setColor(GREEN,BLACK);
-    printf("Post deleted successfully.");
-    resetColor();
-    profilePage( user.name);
-    return;
+
+    if (foundPost) {
+        setColor(GREEN,BLACK);
+        printf("Post deleted successfully.");
+        resetColor();
+        profilePage(user.name);
+    } else {
+        showError("PostID not found.");
+    }
 }
 
 
@@ -1116,7 +1119,12 @@ void editPost(char postId[]) {
 
             // Skip the likes and liked lines
             fgets(buffer, sizeof(buffer), fData);
-            fgets(buffer, sizeof(buffer), fData);
+            
+            int likesCount;
+            sscanf(buffer, "Likes: %d\n", &likesCount);
+            for (int i = 0; i < likesCount; i++) {
+                fgets(buffer, sizeof(buffer), fData);
+            }
 
 
             fputs(buffer, tempFile);

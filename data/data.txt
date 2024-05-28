@@ -3,12 +3,12 @@
 User: Mosabbir
 Email: kmosabbir@gmail.com
 Password: 2234110625
-PostID: Mosabbir_1
-Content: My name is Mosabbir. Creating this Cweeter feels awesome. I can't wait to show it to everyone. 
-Date: 2024-05-28
-Likes: 1
-Liked: Fahim
 
+
+PostID: Mosabbir_1
+Content: Thou shall win!
+Date: 2024-05-28
+Likes: 0
 User: Fahim
 Email: fam@homie.com
 Password: 2234110625
