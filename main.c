@@ -45,14 +45,25 @@ struct Likes{
     char likedBy[100][100];
 };
 
-struct Post{
+
+
+struct Comments{
+    int commentCount;
+    char commentBy[100][100];
+    char comment[100][256];
+};
+
+struct Post {
     char postId[64];
     char content[256];
     char date[32];
     struct Likes likes;
-
+    struct Comments comments;
 };
-struct Post posts[MAX_POSTS];
+
+struct Post posts[MAX_POSTS];  // Array to store all posts
+
+
 
 struct userInfo user;
 
@@ -115,7 +126,7 @@ void menu() {
     resetColor();
     if (input == 'P' || input == 'p') {
         loadingAnim();
-        profilePage( user.name);
+        profilePage(user.name);
     } else if (input == 'q' || input == 'Q') {
         exit(0); // Exit the program
     } else if (input == 'E' || input == 'e') {
@@ -468,7 +479,7 @@ int getAllPostCount()
 
 void explorePage()
 {
-    
+
     loadPosts();
 
     displayPosts(1);
@@ -503,46 +514,59 @@ void loadPosts(){
                 sscanf(buffer, "Liked: %s\n", posts[numOfPost].likes.likedBy[i]);
             }
 
+            // Read the comments count
+            fgets(buffer, sizeof(buffer), fData);
+            sscanf(buffer, "Comments: %d\n", &posts[numOfPost].comments.commentCount);
+
+            // Initialize the comments and commentBy arrays
+            for (int i = 0; i < posts[numOfPost].comments.commentCount; i++) {
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "CommentBy: %s\n", posts[numOfPost].comments.commentBy[i]);
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "Comment: %[^\n]", posts[numOfPost].comments.comment[i]);
+            }
+
             numOfPost++;
         }
     }
+    postCount = numOfPost;
     fclose(fData);
 }
 
 // Displays the post in explore page with pagination
 void displayPosts(int page) {
     system("cls");
-    int numOfPost = getAllPostCount();
     int start = (page - 1) * POSTS_PER_PAGE;
     int end = start + POSTS_PER_PAGE;
-    if (start >= numOfPost) {
+    if (start >= postCount) {
         showError("No more posts to display.");
         explorePage();
         return;
     }
-    if (end > numOfPost) end = numOfPost;
+    if (end > postCount) end = postCount;
 
     for (int i = start; i < end; i++) {
-        setColor(CYAN, BLACK);
+        setColor(CYAN,BLACK);
         printf("PostID: %s\n", posts[i].postId);
         resetColor();
-        setColor(BLACK, CYAN);
+        setColor(BLACK,CYAN);
         printf("Content: %s\n", posts[i].content);
         resetColor();
-        setColor(CYAN, BLACK);
+        setColor(CYAN,BLACK);
         printf("Date: %s\n\n", posts[i].date);
         printf("Likes: %d\n", posts[i].likes.likeCount);
 
-        // Print the likedBy list
-        for (int j = 0; j < posts[i].likes.likeCount; j++) {
-            printf("Liked: %s\n", posts[i].likes.likedBy[j]);
+        // Display comments
+        printf("Comments (%d):\n", posts[i].comments.commentCount);
+        for (int j = 0; j < posts[i].comments.commentCount; j++) {
+            printf("  %s: %s\n", posts[i].comments.commentBy[j], posts[i].comments.comment[j]);
         }
 
-        printf("[L]ike\n");
+        printf("[L]ike\n[C]omment\n");
         printf("=====================================\n\n");
         resetColor();
     }
-    setColor(CYAN, BLACK);
+    setColor(CYAN,BLACK);
     printf("< [P]revious | [N]ext >\n");
     printf("[Q]uit\n");
     resetColor();
@@ -557,7 +581,7 @@ void displayPosts(int page) {
             displayPosts(page);
         }
     } else if (input == 'N' || input == 'n') {
-        if (end < numOfPost) {
+        if (end < postCount) {
             displayPosts(page + 1);
         } else {
             showError("No next page.");
@@ -566,20 +590,33 @@ void displayPosts(int page) {
     } else if (input == 'Q' || input == 'q') {
         menu();
     } else if(input == 'L' || input == 'l'){
-        setColor(CYAN, BLACK);
+        setColor(CYAN,BLACK);
         printf("Enter PostID to like: ");
         resetColor();
         char postId[64];
         scanf("%63s", postId);
         likePost(postId);
         explorePage();
+    } else if(input == 'C' || input == 'c') {
+        setColor(CYAN,BLACK);
+        printf("Enter PostID to comment: ");
+        resetColor();
+        char postId[64];
+        scanf("%63s", postId);
+        setColor(CYAN,BLACK);
+        printf("Enter comment: ");
+        resetColor();
+        char comment[256];
+        getchar(); // consume newline left by previous input
+        fgets(comment, sizeof(comment), stdin);
+        comment[strcspn(comment, "\n")] = 0; // remove newline character
+        addComment(postId, comment);
+        explorePage();
     } else {
         showError("Invalid Input");
         displayPosts(page);
     }
 }
-
-
 
 
 void displayUserPosts(int page, char username[32]) {
@@ -626,8 +663,16 @@ void displayUserPosts(int page, char username[32]) {
             printf("Date: %s\n", posts[index].date);
             printf("Likes: %d\n", posts[index].likes.likeCount);
 
+            // Display comments
+            printf("Comments (%d):\n", posts[index].comments.commentCount);
+            for (int j = 0; j < posts[index].comments.commentCount; j++) {
+                printf("  %s: %s\n", posts[index].comments.commentBy[j], posts[index].comments.comment[j]);
+            }
+
+
+
             printf("====================================\n\n");
-            printf("\t[L]ike [D]elete   [E]dit\n\n");
+            printf("[L]ike [C]omment [D]elete   [E]dit\n\n");
             printf("====================================\n\n");
             resetColor();
         }
@@ -679,6 +724,20 @@ void displayUserPosts(int page, char username[32]) {
             scanf("%63s", postId);
             likePost(postId);
             profilePage(username);
+        } else if(input == 'C' || input == 'c') {
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to comment: ");
+            resetColor();
+            scanf("%63s", postId);
+            setColor(CYAN, BLACK);
+            printf("Enter comment: ");
+            resetColor();
+            char comment[256];
+            getchar(); // consume newline left by previous input
+            fgets(comment, sizeof(comment), stdin);
+            comment[strcspn(comment, "\n")] = 0; // remove newline character
+            addComment(postId, comment);
+            displayUserPosts(page, username);
         } else {
             showError("Invalid Input");
             displayUserPosts(page, username);
@@ -724,7 +783,7 @@ void displayUserPosts(int page, char username[32]) {
             printf("Likes: %d\n", posts[index].likes.likeCount);
 
             printf("====================================\n\n");
-            printf("\t[L]ike\n\n");
+            printf("\t[L]ike [C]omment\n\n");
             printf("====================================\n\n");
             resetColor();
         }
@@ -759,6 +818,21 @@ void displayUserPosts(int page, char username[32]) {
             char postId[64];
             scanf("%63s", postId);
             likePost(postId);
+            profilePage(username);
+        } else if(input == 'C' || input == 'c'){
+            setColor(CYAN, BLACK);
+            printf("Enter PostID to comment: ");
+            resetColor();
+            char postId[64];
+            scanf("%63s", postId);
+            setColor(CYAN, BLACK);
+            printf("Enter comment: ");
+            resetColor();
+            char comment[256];
+            getchar(); // consume newline left by previous input
+            fgets(comment, sizeof(comment), stdin);
+            comment[strcspn(comment, "\n")] = 0; // remove newline character
+            addComment(postId, comment);
             profilePage(username);
         } else {
             showError("Invalid Input");
@@ -808,9 +882,17 @@ void loadUserPosts(char username[32]) {
                         sscanf(buffer, "Liked: %s\n", posts[postCount].likes.likedBy[i]);
                     }
 
+                    // Read the comments count
+                    fgets(buffer, sizeof(buffer), fData);
+                    sscanf(buffer, "Comments: %d\n", &posts[postCount].comments.commentCount);
 
-
-
+                    // Read the comments and commentBy list
+                    for (int i = 0; i < posts[postCount].comments.commentCount; i++) {
+                        fgets(buffer, sizeof(buffer), fData);
+                        sscanf(buffer, "CommentBy: %s\n", posts[postCount].comments.commentBy[i]);
+                        fgets(buffer, sizeof(buffer), fData);
+                        sscanf(buffer, "Comment: %[^\n]", posts[postCount].comments.comment[i]);
+                    }
                     postCount++;
                 }
                 // Stop reading if another user is encountered
@@ -862,9 +944,7 @@ void loadUserPosts(char username[32]) {
 
 void profilePage(char username[32]) {
     system("cls");
-    setColor(CYAN, BLACK);
 
-    resetColor();
 
     loadUserPosts(username);
 
@@ -1003,8 +1083,8 @@ void likePost(char postId[]) {
                     // Add the current user to the likedBy list
                     fprintf(tempFile, "Liked: %s\n", user.name);
 
-                    
-                }  
+
+                }
 
                 // Continue reading and writing the rest of the file
                 while (fgets(buffer, sizeof(buffer), fData) != NULL) {
@@ -1031,6 +1111,99 @@ void likePost(char postId[]) {
 }
 
 
+void addComment(char postId[], char commentContent[]) {
+    FILE *tempFile;
+    char buffer[256];
+    tempFile = fopen("temp.txt", "w");
+
+    if (tempFile == NULL) {
+        showError("Could not open temp file for writing");
+        return;
+    }
+
+    fData = fopen(data, "r");
+    if (fData == NULL) {
+        showError("Could not open data file");
+        fclose(tempFile);
+        return;
+    }
+
+    int foundPost = 0;
+    while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+        fputs(buffer, tempFile);
+
+        if (strncmp(buffer, "PostID: ", 8) == 0) {
+            char extractedPostId[64];
+            sscanf(buffer, "PostID: %63[^\n]", extractedPostId);
+            if (strcmp(extractedPostId, postId) == 0) {
+                foundPost = 1;
+
+                // Skip the content and date lines
+                for (int i = 0; i < 2; i++) {
+                    fgets(buffer, sizeof(buffer), fData);
+                    fputs(buffer, tempFile);
+                }
+
+                // Read and write the likes count
+                fgets(buffer, sizeof(buffer), fData);
+                fputs(buffer, tempFile);
+
+                // Read and write the likedBy list
+                int likes;
+                sscanf(buffer, "Likes: %d\n", &likes);
+                for (int i = 0; i < likes; i++) {
+                    fgets(buffer, sizeof(buffer), fData);
+                    fputs(buffer, tempFile);
+                }
+
+                // Read the comments count
+                int commentsCount;
+                fgets(buffer, sizeof(buffer), fData);
+                sscanf(buffer, "Comments: %d\n", &commentsCount);
+
+                // Write the updated comments count
+                fprintf(tempFile, "Comments: %d\n", commentsCount + 1);
+
+                // Read and write the existing comments
+                for (int i = 0; i < commentsCount; i++) {
+                    fgets(buffer, sizeof(buffer), fData);
+                    fputs(buffer, tempFile);
+                    fgets(buffer, sizeof(buffer), fData);
+                    fputs(buffer, tempFile);
+                }
+
+                // Add the new comment
+                fprintf(tempFile, "CommentBy: %s\n", user.name);
+                fprintf(tempFile, "Comment: %s\n", commentContent);
+
+                setColor(GREEN, BLACK);
+                printf("Comment added successfully.\n");
+                resetColor();
+
+                // Continue reading and writing the rest of the file
+                while (fgets(buffer, sizeof(buffer), fData) != NULL) {
+                    fputs(buffer, tempFile);
+                }
+
+                fclose(fData);
+                fclose(tempFile);
+                remove(data);
+                rename("temp.txt", data);
+                return;
+            }
+        }
+    }
+
+    fclose(fData);
+    fclose(tempFile);
+    remove("temp.txt");
+
+    if (!foundPost) {
+        showError("Post not found.");
+    }
+}
+
+
 void deletePost(char postId[]) {
     FILE *tempFile;
     char buffer[256];
@@ -1045,40 +1218,47 @@ void deletePost(char postId[]) {
         return;
     }
 
-    int foundPost = 0;
+    int skip = 0;
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, searchString) == buffer) {
-            foundPost = 1;
+            skip = 1;
+        }
+        if (!skip) {
+            fputs(buffer, tempFile);
+        } else {
             // Skip next two lines (Content and Date)
-            fgets(buffer, sizeof(buffer), fData); // Content
-            fgets(buffer, sizeof(buffer), fData); // Date
-            // Skip the likes and liked lines
-            fgets(buffer, sizeof(buffer), fData); // Likes
-            
-            int likesCount;
+            fgets(buffer, sizeof(buffer), fData);
+            fgets(buffer, sizeof(buffer), fData);
 
+            // Skip the likes and liked lines
+            int likesCount;
+            fgets(buffer, sizeof(buffer), fData);
             sscanf(buffer, "Likes: %d\n", &likesCount);
             for (int i = 0; i < likesCount; i++) {
                 fgets(buffer, sizeof(buffer), fData);
             }
-            continue; // Skip writing this post to temp file
+
+            // Skip the comments and comment lines
+            int commentsCount;
+            fgets(buffer, sizeof(buffer), fData);
+            sscanf(buffer, "Comments: %d\n", &commentsCount);
+            for (int i = 0; i < commentsCount; i++) {
+                fgets(buffer, sizeof(buffer), fData); // CommentBy line
+                fgets(buffer, sizeof(buffer), fData); // Comment line
+            }
+
+            skip = 0;
         }
-        fputs(buffer, tempFile);
     }
 
     fclose(fData);
     fclose(tempFile);
     remove(data);
     rename("temp.txt", data);
-
-    if (foundPost) {
-        setColor(GREEN,BLACK);
-        printf("Post deleted successfully.");
-        resetColor();
-        profilePage(user.name);
-    } else {
-        showError("PostID not found.");
-    }
+    setColor(GREEN,BLACK);
+    printf("Post deleted successfully.\n");
+    resetColor();
+    profilePage(user.name);
 }
 
 
@@ -1111,23 +1291,36 @@ void editPost(char postId[]) {
             newContent[strcspn(newContent, "\n")] = 0; // remove newline character
             fprintf(tempFile, "Content: %s\n", newContent);
 
-
             // Update the date to the current time
             time_t t = time(NULL);
             struct tm tm = *localtime(&t);
             fprintf(tempFile, "Date: %04d-%02d-%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
 
-            // Skip the likes and liked lines
+            // Read and write the likes count
             fgets(buffer, sizeof(buffer), fData);
-            
-            int likesCount;
-            sscanf(buffer, "Likes: %d\n", &likesCount);
-            for (int i = 0; i < likesCount; i++) {
+            fputs(buffer, tempFile);
+
+            // Read and write the likedBy list
+            int likes;
+            sscanf(buffer, "Likes: %d\n", &likes);
+            for (int i = 0; i < likes; i++) {
                 fgets(buffer, sizeof(buffer), fData);
+                fputs(buffer, tempFile);
             }
 
-
+            // Read and write the comments count
+            int commentsCount;
+            fgets(buffer, sizeof(buffer), fData);
             fputs(buffer, tempFile);
+
+            // Read and write the existing comments
+            for (int i = 0; i < commentsCount; i++) {
+                fgets(buffer, sizeof(buffer), fData);
+                fputs(buffer, tempFile);
+                fgets(buffer, sizeof(buffer), fData);
+                fputs(buffer, tempFile);
+            }
+
             editing = 1;
         } else {
             fputs(buffer, tempFile);
@@ -1141,7 +1334,6 @@ void editPost(char postId[]) {
 
     if (editing) {
         profilePage(user.name);
-        return;
         showError("Post edited successfully.");
     } else {
         showError("PostID not found.");
@@ -1242,6 +1434,8 @@ void addPost() {
     printf("Post added successfully.\n");
     resetColor();
 }
+
+
 void setColor(int color, int background) {
     printf("\033[%d;%dm", background + 40, color + 30);
 }
