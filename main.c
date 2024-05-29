@@ -178,6 +178,7 @@ void showError(char error[]){
 
 void signUp() {
     system("cls");
+    fflush(stdin);
     char extractedUsername[50], extractedEmail[50];
     int i;
 
@@ -185,11 +186,24 @@ void signUp() {
     setColor(GREEN, BLACK);
     printf("Username: ");
     resetColor();
-    scanf("%31s", user.name); // limit input size to 32 chars
+
+    fgets(user.name, sizeof(user.name), stdin);
     setColor(GREEN, BLACK);
+
     printf("Email: ");
     resetColor();
-    scanf("%31s", user.email);
+
+    fgets(user.email, sizeof(user.email), stdin);
+
+    size_t len = strlen(user.name);
+    if (len > 0 && user.name[len - 1] == '\n') {
+        user.name[len - 1] = '\0';
+    }
+
+     len = strlen(user.email);
+    if (len > 0 && user.email[len - 1] == '\n') {
+        user.email[len - 1] = '\0';
+    }
 
     // Check for invalid characters in username
     for (i = 0; user.name[i] != '\0'; i++) {
@@ -296,7 +310,7 @@ void takePass(){
     }
     printf("\nEnter password again: ");
     takeHiddenInput(user.confirmPassword);
-    //printf("\nFirst password : %s\nSecond password: %s\nSAME? %d\n", password, confirmPassword, matchString(password, confirmPassword));
+
     if(strcmp(user.password, user.confirmPassword)){
         showError("Passwords do not match");
         takePass();
@@ -308,6 +322,7 @@ void takePass(){
 
 void signIn() {
     system("cls");
+    fflush(stdin);
 
     char extractedPassword[50];
     char buffer[256];
@@ -315,7 +330,15 @@ void signIn() {
     setColor(PURPLE, BLACK);
     printf("Enter username: ");
     resetColor();
-    scanf("%49s", user.name);
+
+
+    fgets(user.name, sizeof(user.name), stdin);
+    setColor(GREEN, BLACK);
+
+    size_t len = strlen(user.name);
+    if (len > 0 && user.name[len - 1] == '\n') {
+        user.name[len - 1] = '\0';
+    }
 
     fData = fopen(data, "r");
     if (fData == NULL) {
@@ -621,6 +644,21 @@ void displayPosts(int page) {
 
 void displayUserPosts(int page, char username[32]) {
     system("cls");
+
+    printf("\nUser Information:\n");
+    printf("-------------------------------\n");
+    puts(username);
+    printf("\n");
+
+    int postNum = getPostCount(username);
+
+    printf("Number of Posts: %d\n", postNum);
+
+
+    printf("------------------------------\n\n");
+
+
+
     if(strcmp(username, user.name) == 0) {
         if (postCount == 0) {
             setColor(CYAN, BLACK);
@@ -671,8 +709,8 @@ void displayUserPosts(int page, char username[32]) {
 
 
 
-            printf("====================================\n\n");
-            printf("[L]ike [C]omment [D]elete   [E]dit\n\n");
+            printf("------------------------------------\n\n");
+            printf(" [L]ike [C]omment [D]elete   [E]dit\n\n");
             printf("====================================\n\n");
             resetColor();
         }
@@ -944,6 +982,7 @@ void loadUserPosts(char username[32]) {
 
 void profilePage(char username[32]) {
     system("cls");
+
 
 
     loadUserPosts(username);
