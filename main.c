@@ -74,7 +74,7 @@ void signIn();
 void takePass();
 void hash_password(const char str[], char hashed_pass[]);
 void takeHiddenInput(char[]);// takes the input array as an argument
-unsigned int hashingFunction(char[]); // hashes the password
+unsigned int hash_function(const char str[]);
 
 int isElementOf(char, char[]);//Returns 1 if a char is an element of a string
 void showError(char[]);//Takes the error reason as an argument and prints it on the screen
