@@ -700,6 +700,9 @@ void displayUserPosts(int page, char username[32]) {
             setColor(CYAN, BLACK);
             printf("Date: %s\n", posts[index].date);
             printf("Likes: %d\n", posts[index].likes.likeCount);
+            for (int i = 0; i < posts[index].likes.likeCount; i++) {
+                printf("Liked by: %s\n", posts[index].likes.likedBy[i]);
+            }
 
             // Display comments
             printf("Comments (%d):\n", posts[index].comments.commentCount);
@@ -913,24 +916,37 @@ void loadUserPosts(char username[32]) {
                     fgets(buffer, sizeof(buffer), fData);
                     sscanf(buffer, "Likes: %d\n", &posts[postCount].likes.likeCount);
 
-                    // Read likedBy list
-
-                    for (int i = 0; i < posts[postCount].likes.likeCount; i++) {
-                        fgets(buffer, sizeof(buffer), fData);
-                        sscanf(buffer, "Liked: %s\n", posts[postCount].likes.likedBy[i]);
+                    // IF  like is zero enter empty string 
+                    if (posts[postCount].likes.likeCount == 0) {
+                        posts[postCount].likes.likedBy[0][0] = '\0';
+                    } else {
+                        // read likedBy list
+                        for (int i = 0; i < posts[postCount].likes.likeCount; i++) {
+                            fgets(buffer, sizeof(buffer), fData);
+                            sscanf(buffer, "Liked: %s\n", posts[postCount].likes.likedBy[i]);
+                        }
                     }
 
                     // Read the comments count
                     fgets(buffer, sizeof(buffer), fData);
                     sscanf(buffer, "Comments: %d\n", &posts[postCount].comments.commentCount);
 
-                    // Read the comments and commentBy list
-                    for (int i = 0; i < posts[postCount].comments.commentCount; i++) {
-                        fgets(buffer, sizeof(buffer), fData);
-                        sscanf(buffer, "CommentBy: %s\n", posts[postCount].comments.commentBy[i]);
-                        fgets(buffer, sizeof(buffer), fData);
-                        sscanf(buffer, "Comment: %[^\n]", posts[postCount].comments.comment[i]);
+                    // IF  comment is zero enter empty string
+
+                    if (posts[postCount].comments.commentCount == 0) {
+                        posts[postCount].comments.comment[0][0] = '\0';
+                        posts[postCount].comments.commentBy[0][0] = '\0';
+                    } else {
+                        // read comment list
+                        for (int i = 0; i < posts[postCount].comments.commentCount; i++) {
+                            fgets(buffer, sizeof(buffer), fData);
+                            sscanf(buffer, "CommentBy: %s\n", posts[postCount].comments.commentBy[i]);
+                            fgets(buffer, sizeof(buffer), fData);
+                            sscanf(buffer, "Comment: %s\n", posts[postCount].comments.comment[i]);
+                        }
                     }
+
+
                     postCount++;
                 }
                 // Stop reading if another user is encountered
@@ -1257,46 +1273,52 @@ void deletePost(char postId[]) {
         return;
     }
 
-    int skip = 0;
+    int deleted = 0;
+
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, searchString) == buffer) {
-            skip = 1;
-        }
-        if (!skip) {
-            fputs(buffer, tempFile);
-        } else {
-            // Skip next two lines (Content and Date)
+            // Skip the PostID line
+            // Skip the content line
             fgets(buffer, sizeof(buffer), fData);
+            // Skip the date line
             fgets(buffer, sizeof(buffer), fData);
-
-            // Skip the likes and liked lines
-            int likesCount;
+            // Skip the likes count line
             fgets(buffer, sizeof(buffer), fData);
-            sscanf(buffer, "Likes: %d\n", &likesCount);
-            for (int i = 0; i < likesCount; i++) {
+            // Skip the likedBy list
+            int likes;
+            sscanf(buffer, "Likes: %d\n", &likes);
+            for (int i = 0; i < likes; i++) {
                 fgets(buffer, sizeof(buffer), fData);
             }
-
-            // Skip the comments and comment lines
-            int commentsCount;
+            // Skip the comments count line
             fgets(buffer, sizeof(buffer), fData);
+            // Skip the comments and commentBy list
+            int commentsCount;
             sscanf(buffer, "Comments: %d\n", &commentsCount);
             for (int i = 0; i < commentsCount; i++) {
-                fgets(buffer, sizeof(buffer), fData); // CommentBy line
-                fgets(buffer, sizeof(buffer), fData); // Comment line
+                fgets(buffer, sizeof(buffer), fData);
+                fgets(buffer, sizeof(buffer), fData);
             }
-
-            skip = 0;
+            deleted = 1;
+        }else {
+            fputs(buffer, tempFile);
         }
     }
 
+    if (!deleted) {
+        showError("PostID not found.");
+        fclose(fData);
+        fclose(tempFile);
+        remove("temp.txt");
+        return;
+    }
+
+    
+    
     fclose(fData);
     fclose(tempFile);
     remove(data);
     rename("temp.txt", data);
-    setColor(GREEN,BLACK);
-    printf("Post deleted successfully.\n");
-    resetColor();
     profilePage(user.name);
 }
 
@@ -1316,24 +1338,35 @@ void editPost(char postId[]) {
     }
 
     int editing = 0;
-    char newContent[256];
+    char newContent[200];
 
     while (fgets(buffer, sizeof(buffer), fData) != NULL) {
         if (strstr(buffer, searchString) == buffer) {
+            // Write the PostID line
             fputs(buffer, tempFile);
+            // Skip the content line
             fgets(buffer, sizeof(buffer), fData);
             setColor(CYAN,BLACK);
-            printf("Enter new content: ");
+            printf("Enter new content (200 character): ");
             resetColor();
             getchar(); // consume newline left by previous input
             fgets(newContent, sizeof(newContent), stdin);
             newContent[strcspn(newContent, "\n")] = 0; // remove newline character
             fprintf(tempFile, "Content: %s\n", newContent);
 
-            // Update the date to the current time
+
+            // Skip the date line
+            fgets(buffer, sizeof(buffer), fData);
+
+            // Update the date to the current time and write it
             time_t t = time(NULL);
             struct tm tm = *localtime(&t);
             fprintf(tempFile, "Date: %04d-%02d-%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+
+
+            
+
+
 
             // Read and write the likes count
             fgets(buffer, sizeof(buffer), fData);
@@ -1381,7 +1414,7 @@ void editPost(char postId[]) {
 
 
 void addPost() {
-    char newContent[256];
+    char newContent[200];
     char newPostId[64];
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
@@ -1389,7 +1422,7 @@ void addPost() {
 
     snprintf(date, sizeof(date), "%d-%02d-%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
     setColor(CYAN,BLACK);
-    printf("Enter post content: ");
+    printf("Enter post content (200 characters): ");
     resetColor();
     getchar(); // consume newline left by previous input
     fgets(newContent, sizeof(newContent), stdin);
@@ -1401,7 +1434,7 @@ void addPost() {
         showError("Could not open data file");
         return;
     }
-
+    // Read the entire file content into memory
     char fileContent[10000];
     fileContent[0] = '\0'; // Initialize the fileContent as an empty string
     char buffer[256];
@@ -1448,7 +1481,7 @@ void addPost() {
 
     // Create the new post entry
     char newPostEntry[512];
-    snprintf(newPostEntry, sizeof(newPostEntry), "\nPostID: %s\nContent: %s\nDate: %s\nLikes: 0\n", newPostId, newContent, date);
+    snprintf(newPostEntry, sizeof(newPostEntry), "\n\n\n\n\n\n\n\n\n\n\n\nPostID: %s\nContent: %s\nDate: %s\nLikes: 0\nComments: 0\n\n\n\n\n\n\n\n\n\n\n\n", newPostId, newContent, date);
 
     // Insert the new post entry
     char updatedContent[20000];
